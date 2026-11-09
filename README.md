@@ -12,7 +12,9 @@ Einkaufs- und Vorrats-App für den Haushalt: Einkäufe erfassen, Lagerbestand na
 
 Mit der Foto-Funktion kannst du einen Kassenbon oder eine Einkaufsliste fotografieren. Die App verkleinert das Bild im Browser auf maximal 1.600 Pixel Kantenlänge und sendet es als JPEG an die Supabase-Edge-Function `scan-receipt`. Die erkannten Artikel kannst du prüfen und bearbeiten, bevor sie in den Vorrat oder auf die Einkaufsliste übernommen werden.
 
-Die Foto-KI-Funktion ist mit Unterstützung von ChatGPT entstanden. Der Edge-Function-Code und die verwendete KI-Konfiguration liegen in Supabase, nicht in diesem Repository.
+Die Beschreibung dieser Funktion wurde mit ChatGPT in die README aufgenommen. ChatGPT hat die Foto-KI-Funktion selbst nicht erstellt; sie war bereits in der App vorhanden.
+
+Der Edge-Function-Code und die verwendete KI-Konfiguration liegen in Supabase, nicht in diesem Repository.
 
 ## Daten und Zugriff
 
