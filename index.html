@@ -4,6 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Vorrat</title>
+<meta name="theme-color" content="#1d6b48">
+<meta name="description" content="Einkäufe erfassen und den Vorrat im Haushalt im Blick behalten.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -40,11 +45,14 @@ button{cursor:pointer}
 .wrap{max-width:680px;margin:0 auto;padding:0 16px 120px}
 
 header{position:sticky;top:0;z-index:5;background:var(--bg);padding:14px 0 10px;border-bottom:1px solid var(--line)}
-.top{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
 h1{font-family:var(--display);font-weight:700;font-size:34px;letter-spacing:-.02em;margin:0;line-height:1}
 .stats{color:var(--muted);font-size:14px;font-variant-numeric:tabular-nums;margin:6px 0 0}
 .stats b{color:var(--ink);font-weight:600}
 .stats .soon{color:var(--warn);font-weight:600}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.pillbtn{background:none;border:1px solid var(--line);color:var(--ink);border-radius:999px;padding:6px 14px;font-size:14px;font-weight:600}
+.pillbtn:hover{background:var(--accent-soft)}
 .clear-all{background:none;border:1px solid var(--crit);color:var(--crit);border-radius:999px;padding:6px 14px;font-size:14px;font-weight:600}
 .clear-all:hover{background:var(--crit-soft)}
 .clear-all[disabled]{opacity:.4;cursor:default}
@@ -98,6 +106,7 @@ h1{font-family:var(--display);font-weight:700;font-size:34px;letter-spacing:-.02
 .scrim[hidden]{display:none}
 .sheet{background:var(--surface);width:100%;max-width:680px;max-height:92%;overflow-y:auto;border-radius:20px 20px 0 0;padding:18px 16px 22px}
 .sheet h2{font-family:var(--display);font-size:22px;margin:0}
+.sheet h3{font-family:var(--display);font-size:13px;letter-spacing:.09em;text-transform:uppercase;margin:20px 0 8px}
 .sheet-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
 .x{background:none;border:0;font-size:15px;color:var(--muted);padding:6px;text-decoration:underline;text-underline-offset:3px}
 form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -109,11 +118,30 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .sugg{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;min-height:0}
 .sugg button{background:var(--accent-soft);color:var(--accent);border:0;border-radius:999px;padding:6px 12px;font-size:14px;font-weight:500}
 .actions{grid-column:1/-1;display:flex;gap:10px;margin-top:4px}
-.primary{flex:1;border:0;border-radius:999px;background:var(--accent);color:var(--accent-ink);padding:13px;font-weight:600}
+.primary{flex:1;border:0;border-radius:999px;background:var(--accent);color:var(--accent-ink);padding:13px;font-weight:600;width:100%}
+.primary[disabled]{opacity:.6;cursor:default}
 .danger{border:1px solid var(--crit);background:none;color:var(--crit);border-radius:999px;padding:13px 18px;font-weight:600}
 .danger[hidden]{display:none}
 .session{grid-column:1/-1;font-size:14px;color:var(--muted);margin:2px 0 0;font-variant-numeric:tabular-nums}
 .session:empty{display:none}
+
+.hint{color:var(--muted);font-size:14px;margin:0 0 10px}
+.who{margin:0;color:var(--muted);font-size:14px;overflow-wrap:anywhere}
+.members{list-style:none;margin:0;padding:0}
+.members li{padding:8px 0;border-bottom:1px solid var(--line);font-size:15px;overflow-wrap:anywhere}
+.code{margin:12px 0 0;padding:14px;border-radius:var(--r);background:var(--accent-soft);color:var(--accent);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:22px;font-weight:700;letter-spacing:.06em;text-align:center;user-select:all;overflow-wrap:anywhere}
+.code small{display:block;font-family:var(--body);font-size:13px;font-weight:500;letter-spacing:0;margin-top:4px}
+.stack{display:grid;gap:10px;margin-top:20px}
+
+.auth{position:fixed;inset:0;z-index:20;background:var(--bg);overflow-y:auto;display:flex;align-items:center;justify-content:center;padding:24px 16px}
+.auth[hidden]{display:none}
+.auth-card{width:100%;max-width:380px}
+.auth-card h1{font-size:44px}
+.lead{color:var(--muted);margin:8px 0 18px}
+.auth form{grid-template-columns:1fr;margin-top:14px}
+.err{margin:0;color:var(--crit);font-size:14px;min-height:0}
+.err:empty{display:none}
+.linkbtn{background:none;border:0;color:var(--muted);text-decoration:underline;text-underline-offset:3px;font-size:14px;padding:8px;justify-self:center}
 @media (max-width:400px){ h1{font-size:28px} .qty .n{min-width:44px} .qty button{width:30px;height:30px} }
 @media (prefers-reduced-motion:reduce){ *{transition:none!important} }
 </style>
@@ -126,7 +154,10 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
         <h1>Vorrat</h1>
         <p class="stats" id="stats">Lade Bestand …</p>
       </div>
-      <button class="clear-all" id="clear-all" type="button" disabled>Lager leeren</button>
+      <div class="btns">
+        <button class="pillbtn" id="hh-open" type="button">Haushalt</button>
+        <button class="clear-all" id="clear-all" type="button" disabled>Lager leeren</button>
+      </div>
     </div>
     <div class="tools">
       <input class="search" id="search" type="search" placeholder="Suchen …" aria-label="Im Lager suchen" autocomplete="off">
@@ -172,13 +203,65 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   </div>
 </div>
 
+<div class="scrim" id="scrim2" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="hh-title">
+    <div class="sheet-head">
+      <h2 id="hh-title">Haushalt</h2>
+      <button class="x" id="hh-close" type="button">Schließen</button>
+    </div>
+    <p class="who" id="hh-who"></p>
+    <h3>Mitglieder</h3>
+    <ul class="members" id="hh-members"></ul>
+    <h3>Person einladen</h3>
+    <p class="hint">Erzeuge einen Code und schick ihn der Person. Sie registriert sich in der App und gibt den Code ein. Der Code gilt 7 Tage und nur einmal.</p>
+    <button class="primary" id="hh-invite" type="button">Einladungscode erzeugen</button>
+    <div class="code" id="hh-code" hidden></div>
+    <h3>App installieren</h3>
+    <p class="hint">Android: In Chrome das Menü ⋮ öffnen und „App installieren" wählen. Danach liegt Vorrat auf dem Startbildschirm.</p>
+    <div class="stack">
+      <button class="primary" id="install" type="button" hidden>Jetzt installieren</button>
+      <button class="danger" id="hh-logout" type="button">Abmelden</button>
+    </div>
+  </div>
+</div>
+
+<div class="auth" id="auth">
+  <div class="auth-card">
+    <h1>Vorrat</h1>
+    <p class="lead" id="auth-lead">Lade …</p>
+    <div id="auth-login" hidden>
+      <div class="seg" role="group" aria-label="Anmelden oder registrieren">
+        <button type="button" id="tab-in" aria-pressed="true">Anmelden</button>
+        <button type="button" id="tab-up" aria-pressed="false">Registrieren</button>
+      </div>
+      <form id="login-form" novalidate>
+        <div class="f"><label for="a-email">E-Mail</label><input id="a-email" type="email" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false"></div>
+        <div class="f"><label for="a-pass">Passwort</label><input id="a-pass" type="password" autocomplete="current-password"></div>
+        <p class="err" id="a-err" role="alert"></p>
+        <button class="primary" id="a-submit" type="submit">Anmelden</button>
+      </form>
+    </div>
+    <div id="auth-join" hidden>
+      <form id="join-form" novalidate>
+        <div class="f"><label for="j-code">Einladungscode</label><input id="j-code" type="text" autocomplete="off" autocapitalize="none" spellcheck="false"></div>
+        <p class="err" id="j-err" role="alert"></p>
+        <button class="primary" id="j-submit" type="submit">Beitreten</button>
+        <button class="linkbtn" id="j-logout" type="button">Mit anderem Konto anmelden</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="supabase.js"></script>
 <script>
 (function(){
 "use strict";
+var SUPABASE_URL="https://wpxoddfaczbhxnmfidoj.supabase.co";
+var SUPABASE_KEY="sb_publishable_i7HNSIeWmKQT_Y8Dc-YZxA_Ku-pfxMC";
 var LOCS=["Kühlschrank","Tiefkühler","Vorratsschrank","Keller","Bad","Sonstiges"];
 var CATS=["Obst & Gemüse","Milchprodukte & Eier","Fleisch & Fisch","Brot & Backwaren","Trockenware","Konserven & Gläser","Tiefkühlkost","Getränke","Süßes & Snacks","Gewürze & Saucen","Drogerie","Haushalt","Sonstiges"];
 var UNITS=["Stk","Pkg","g","kg","ml","l","Dose","Flasche","Glas"];
-var LS_KEY="vorrat.local.v1";
+var CACHE_KEY="vorrat.cache.v1";
 
 var $=function(id){return document.getElementById(id)};
 var esc=function(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})};
@@ -186,7 +269,7 @@ var str=function(v){return typeof v==="string"?v:""};
 var num=function(v){return typeof v==="number"&&isFinite(v)?v:null};
 var fmtNum=function(n){return new Intl.NumberFormat("de-AT",{maximumFractionDigits:2}).format(n)};
 var fmtEur=function(n){return new Intl.NumberFormat("de-AT",{style:"currency",currency:"EUR"}).format(n)};
-function parseNum(s){var n=parseFloat(String(s).trim().replace(/\./g,function(m,i,a){return a.indexOf(",")>-1?"":"."}).replace(",","."));return isFinite(n)?n:null}
+function parseNum(s){var t=String(s).trim();if(t.indexOf(",")>-1)t=t.replace(/\./g,"").replace(",",".");var n=parseFloat(t);return isFinite(n)?n:null}
 function todayISO(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
 function daysUntil(iso){if(!/^\d{4}-\d{2}-\d{2}$/.test(iso))return null;var a=new Date(iso+"T00:00:00"),b=new Date(todayISO()+"T00:00:00");return Math.round((a-b)/864e5)}
 function fmtDate(iso){var p=iso.split("-");return p[2]+"."+p[1]+"."}
@@ -199,65 +282,182 @@ var products={};        // key -> {name,unit,cat,loc,shop}
 var pendingQty={};      // id -> qty (noch nicht geschrieben)
 var qtyTimers={};
 var groupBy="loc", query="", closed={};
-var loaded=false, readOnly=false;
-var editId=null, session={count:0,sum:0};
+var loaded=false;
+var editId=null, buy={count:0,sum:0,id:null};
 var undoStack=null, toastTimer=null;
 try{var pref=JSON.parse(localStorage.getItem("vorrat.ui")||"{}");if(pref.groupBy==="cat")groupBy="cat";closed=pref.closed||{}}catch(e){}
 function savePref(){try{localStorage.setItem("vorrat.ui",JSON.stringify({groupBy:groupBy,closed:closed}))}catch(e){}}
-
-/* ---------- store ---------- */
-var store=null;
-function localStore(){
-  var all=[];var prods={};
-  try{var raw=JSON.parse(localStorage.getItem(LS_KEY)||"{}");all=raw.items||[];prods=raw.products||{}}catch(e){}
-  function push(){try{localStorage.setItem(LS_KEY,JSON.stringify({items:all,products:prods}))}catch(e){}
-    items=all.filter(function(i){return i.status==="in"});products=prods;loaded=true;render()}
-  return {
-    start:push,
-    add:function(id,data){all.push(Object.assign({id:id},data));push();return Promise.resolve()},
-    patch:function(id,patch){var it=all.find(function(i){return i.id===id});if(it)Object.assign(it,patch);push();return Promise.resolve()},
-    product:function(key,data){prods[key]=data;push();return Promise.resolve()}
-  };
-}
-function dbStore(db){
-  var chains={};
-  function chain(key,fn){var p=(chains[key]||Promise.resolve()).then(fn);chains[key]=p.catch(function(){});return p.catch(onWriteError)}
-  return {
-    start:function(){
-      var timer=setTimeout(function(){note(loaded?"Der Bestand ist vielleicht nicht aktuell, die Verbindung hängt.":"Der Bestand lässt sich gerade nicht laden. Die App versucht es weiter.")},10000);
-      db.collection("items").where("status","==","in").onSnapshot(function(snap){
-        items=snap.docs.map(function(d){return Object.assign({id:d.id},d.data())});
-        loaded=true;
-        if(!snap.metadata.fromCache){clearTimeout(timer);note("")}
-        render();
-      },function(e){clearTimeout(timer);loaded=true;note("Der Bestand ist nicht mehr erreichbar. Lade die Seite neu, um es erneut zu versuchen.");render()});
-      db.collection("products").onSnapshot(function(snap){
-        var p={};snap.docs.forEach(function(d){p[d.id]=d.data()});products=p;
-      },function(){});
-    },
-    add:function(id,data){return chain(id,function(){return db.doc("items/"+id).set(data)})},
-    patch:function(id,patch){return chain(id,function(){return db.doc("items/"+id).update(patch)})},
-    product:function(key,data){return chain("p:"+key,function(){return db.doc("products/"+key).set(data)})}
-  };
-}
-function onWriteError(e){
-  if(e&&e.code==="invalid_argument"){readOnly=true;note("Du hast nur Leserechte. Bitte lass dich als Editor einladen, um den Bestand zu ändern.")}
-  else if(e&&e.code==="quota_exceeded"){note("Der Speicher der App ist voll. Bitte melde dich, dann räumen wir alte Einträge auf.")}
-  else{note("Eine Änderung wurde nicht gespeichert. Bitte versuch es noch einmal.")}
-}
 function note(text){var n=$("note");n.textContent=text;n.hidden=!text}
+
+/* ---------- Supabase ---------- */
+var sb=null, userEmail="", checkedFor=null, dataStarted=false, channel=null, subscribedOnce=false;
+var MAP={name:"name",qty:"qty",unit:"unit",loc:"loc",cat:"cat",mhd:"mhd",price:"price",shop:"shop",status:"status",purchase:"purchase",boughtAt:"bought_at",removedAt:"removed_at"};
+function toRow(d){var o={};Object.keys(d).forEach(function(k){if(MAP[k])o[MAP[k]]=d[k]});return o}
+function fromRow(r){return {id:r.id,name:r.name,qty:r.qty==null?1:Number(r.qty),unit:r.unit,loc:r.loc,cat:r.cat,mhd:r.mhd,price:r.price==null?null:Number(r.price),shop:r.shop,status:r.status,purchase:r.purchase,boughtAt:r.bought_at,removedAt:r.removed_at}}
+
+function cacheSave(){try{localStorage.setItem(CACHE_KEY,JSON.stringify({items:items,products:products}))}catch(e){}}
+function cacheLoad(){try{var c=JSON.parse(localStorage.getItem(CACHE_KEY)||"null");if(c&&Array.isArray(c.items)){items=c.items;products=c.products||{};loaded=true;return true}}catch(e){}return false}
+function cacheClear(){try{localStorage.removeItem(CACHE_KEY)}catch(e){}}
+
+function onWriteError(e){
+  var m=String((e&&e.message)||"");
+  if(e&&(e.code==="42501"||/row-level security|permission denied|JWT/i.test(m)))note("Dafür fehlt die Berechtigung. Bitte melde dich neu an.");
+  else note("Eine Änderung wurde nicht gespeichert. Prüfe die Internetverbindung.");
+}
+function done(res){if(res&&res.error){onWriteError(res.error);refetch()}}
+function failed(){onWriteError(null);refetch()}
+
+function applyLocal(id,patch,base,noRender){
+  var i=items.findIndex(function(x){return x.id===id});
+  var cur=i>-1?items[i]:base;
+  if(!cur)return;
+  var next=Object.assign({},cur,patch);
+  if(next.status!=="in"){if(i>-1)items.splice(i,1)}
+  else if(i>-1)items[i]=next;else items.push(next);
+  if(!noRender){cacheSave();render()}
+}
+var store={
+  add:function(id,data){applyLocal(id,data,{id:id});return sb.from("vorrat_items").insert(Object.assign({id:id},toRow(data))).then(done,failed)},
+  patch:function(id,patch){applyLocal(id,patch,null);return sb.from("vorrat_items").update(toRow(patch)).eq("id",id).then(done,failed)},
+  bulk:function(ids,patch){
+    ids.forEach(function(id){applyLocal(id,patch,null,true)});cacheSave();render();
+    var jobs=[];for(var i=0;i<ids.length;i+=100){jobs.push(ids.slice(i,i+100))}
+    return Promise.all(jobs.map(function(chunk){return sb.from("vorrat_items").update(toRow(patch)).in("id",chunk).then(done,failed)}));
+  },
+  restore:function(list){
+    var rows=list.map(function(u){var it=Object.assign({},u.item,{status:"in",removedAt:null,qty:u.qty});applyLocal(it.id,it,it,true);return Object.assign({id:it.id},toRow(it))});
+    cacheSave();render();
+    return sb.from("vorrat_items").upsert(rows).then(done,failed);
+  },
+  product:function(key,data){products[key]=data;cacheSave();return sb.from("vorrat_products").upsert({key:key,name:data.name,unit:data.unit,cat:data.cat,loc:data.loc,shop:data.shop,updated_at:new Date().toISOString()}).then(done,failed)}
+};
+
+function refetch(){
+  if(!sb||!dataStarted)return;
+  sb.from("vorrat_items").select("*").eq("status","in").limit(5000).then(function(r){
+    if(r.error){loaded=loaded||false;note("Der Bestand lässt sich gerade nicht laden. Prüfe die Internetverbindung.");if(!items.length){loaded=true}render();return}
+    items=r.data.map(fromRow);loaded=true;note("");cacheSave();render();
+  },function(){note("Der Bestand lässt sich gerade nicht laden. Prüfe die Internetverbindung.");loaded=true;render()});
+}
+function loadProducts(){
+  sb.from("vorrat_products").select("*").limit(5000).then(function(r){
+    if(r.error)return;var p={};r.data.forEach(function(x){p[x.key]={name:x.name,unit:x.unit,cat:x.cat,loc:x.loc,shop:x.shop}});products=p;cacheSave();
+  },function(){});
+}
+function handleChange(p){
+  if(p.eventType==="DELETE"){var oid=p.old&&p.old.id;if(oid){var k=items.findIndex(function(x){return x.id===oid});if(k>-1){items.splice(k,1);cacheSave();render()}}return}
+  if(!p.new||!p.new.id)return;
+  var row=fromRow(p.new),i=items.findIndex(function(x){return x.id===row.id});
+  if(row.status==="in"){if(i>-1)items[i]=row;else items.push(row)}else if(i>-1)items.splice(i,1);else return;
+  cacheSave();render();
+}
+function startData(){
+  if(dataStarted)return;dataStarted=true;
+  refetch();loadProducts();
+  channel=sb.channel("vorrat-items").on("postgres_changes",{event:"*",schema:"public",table:"vorrat_items"},handleChange).subscribe(function(status){
+    if(status==="SUBSCRIBED"){if(subscribedOnce)refetch();subscribedOnce=true}
+  });
+}
+function stopData(){
+  dataStarted=false;subscribedOnce=false;
+  if(channel&&sb){try{sb.removeChannel(channel)}catch(e){}}channel=null;
+  items=[];products={};pendingQty={};loaded=false;render();
+}
+document.addEventListener("visibilitychange",function(){if(!document.hidden&&dataStarted)refetch()});
+
+/* ---------- Anmeldung ---------- */
+var authMode="in";
+function setErr(id,t){$(id).textContent=t||""}
+function showAuth(mode,msg){
+  $("auth").hidden=false;
+  $("auth-login").hidden=mode!=="login";$("auth-join").hidden=mode!=="join";
+  $("auth-lead").textContent=mode==="join"?"Angemeldet als "+userEmail+". Gib den Einladungscode aus deinem Haushalt ein.":(mode==="login"?"Melde dich an, um den gemeinsamen Vorrat zu sehen.":"Lade …");
+  setErr("a-err",mode==="login"?msg:"");setErr("j-err",mode==="join"?msg:"");
+  if(mode==="login")$("a-email").focus();if(mode==="join")$("j-code").focus();
+}
+function hideAuth(){$("auth").hidden=true}
+function authError(e){
+  var m=String((e&&e.message)||"");
+  if(/invalid login credentials/i.test(m))return "E-Mail oder Passwort stimmt nicht.";
+  if(/already registered|already been registered/i.test(m))return "Mit dieser E-Mail gibt es schon ein Konto. Bitte melde dich an.";
+  if(/at least|weak/i.test(m))return "Das Passwort ist zu schwach. Nimm mindestens 8 Zeichen.";
+  if(/rate limit|too many/i.test(m))return "Zu viele Versuche. Bitte warte kurz.";
+  if(/valid email|invalid.*email/i.test(m))return "Bitte gib eine gültige E-Mail-Adresse ein.";
+  if(/fetch|network/i.test(m))return "Keine Verbindung. Bitte versuch es noch einmal.";
+  return "Das hat nicht geklappt. Bitte versuch es noch einmal.";
+}
+function setMode(m){
+  authMode=m;$("tab-in").setAttribute("aria-pressed",m==="in");$("tab-up").setAttribute("aria-pressed",m==="up");
+  $("a-submit").textContent=m==="in"?"Anmelden":"Konto anlegen";
+  $("a-pass").setAttribute("autocomplete",m==="in"?"current-password":"new-password");setErr("a-err","");
+}
+function checkMember(){
+  sb.rpc("vorrat_is_member").then(function(r){
+    if(r.error){
+      if(items.length||loaded){note("Keine Verbindung. Du siehst den zuletzt geladenen Stand.");hideAuth()}
+      else showAuth("login","Keine Verbindung. Bitte versuch es noch einmal.");
+      checkedFor=null;return;
+    }
+    if(r.data===true){hideAuth();note("");startData()}
+    else{stopData();cacheClear();showAuth("join")}
+  },function(){checkedFor=null;if(loaded)hideAuth();else showAuth("login","Keine Verbindung. Bitte versuch es noch einmal.")});
+}
+function onSignedIn(s){
+  userEmail=(s.user&&s.user.email)||"";
+  if(checkedFor===s.user.id)return;
+  checkedFor=s.user.id;checkMember();
+}
+function signedOut(){stopData();cacheClear();checkedFor=null;userEmail="";showAuth("login")}
+
+function initAuth(){
+  $("tab-in").addEventListener("click",function(){setMode("in")});
+  $("tab-up").addEventListener("click",function(){setMode("up")});
+  $("login-form").addEventListener("submit",function(e){
+    e.preventDefault();
+    var email=$("a-email").value.trim(),pass=$("a-pass").value;
+    if(!email||!pass){setErr("a-err","Bitte E-Mail und Passwort eingeben.");return}
+    if(authMode==="up"&&pass.length<8){setErr("a-err","Das Passwort braucht mindestens 8 Zeichen.");return}
+    setErr("a-err","");$("a-submit").disabled=true;
+    var p=authMode==="up"?sb.auth.signUp({email:email,password:pass}):sb.auth.signInWithPassword({email:email,password:pass});
+    p.then(function(r){
+      $("a-submit").disabled=false;
+      if(r.error){setErr("a-err",authError(r.error));return}
+      if(authMode==="up"&&!(r.data&&r.data.session)){setErr("a-err","Fast geschafft: Bitte bestätige die E-Mail, die wir dir geschickt haben, und melde dich danach an.")}
+    },function(){$("a-submit").disabled=false;setErr("a-err","Keine Verbindung. Bitte versuch es noch einmal.")});
+  });
+  $("join-form").addEventListener("submit",function(e){
+    e.preventDefault();
+    var code=$("j-code").value.trim();if(!code){setErr("j-err","Bitte den Code eingeben.");return}
+    setErr("j-err","");$("j-submit").disabled=true;
+    sb.rpc("vorrat_join",{p_code:code}).then(function(r){
+      $("j-submit").disabled=false;
+      if(r.error){setErr("j-err",authError(r.error));return}
+      if(r.data===true){$("j-code").value="";checkedFor=null;checkMember()}
+      else setErr("j-err","Dieser Code ist ungültig, schon benutzt oder abgelaufen.");
+    },function(){$("j-submit").disabled=false;setErr("j-err","Keine Verbindung. Bitte versuch es noch einmal.")});
+  });
+  $("j-logout").addEventListener("click",function(){sb.auth.signOut()});
+  sb.auth.onAuthStateChange(function(evt,s){
+    setTimeout(function(){
+      if(evt==="SIGNED_OUT"||(evt==="INITIAL_SESSION"&&!s)){signedOut();return}
+      if(!s||evt==="TOKEN_REFRESHED")return;
+      onSignedIn(s);
+    },0);
+  });
+}
 
 /* ---------- derive + render ---------- */
 function qtyOf(it){return pendingQty[it.id]!=null?pendingQty[it.id]:(num(it.qty)!=null?it.qty:1)}
+function byId(id){return items.find(function(i){return i.id===id})}
 function visible(){
   var q=query.trim().toLowerCase();
   return items.filter(function(it){return !q||str(it.name).toLowerCase().indexOf(q)>-1||str(it.shop).toLowerCase().indexOf(q)>-1});
 }
 function sortRows(a,b){
   var da=daysUntil(str(a.mhd)),dbb=daysUntil(str(b.mhd));
-  var sa=da!=null&&da<=3,sb=dbb!=null&&dbb<=3;
-  if(sa!==sb)return sa?-1:1;
-  if(sa&&sb&&da!==dbb)return da-dbb;
+  var sa=da!=null&&da<=3,sb2=dbb!=null&&dbb<=3;
+  if(sa!==sb2)return sa?-1:1;
+  if(sa&&sb2&&da!==dbb)return da-dbb;
   return str(a.name).localeCompare(str(b.name),"de");
 }
 function render(){
@@ -269,7 +469,7 @@ function render(){
   else{
     st.innerHTML="<b>"+items.length+"</b> Artikel im Lager"+(soon?' · <span class="soon">'+soon+" "+(soon===1?"läuft":"laufen")+" bald ab</span>":"")+(worth?" · Einkaufswert <b>"+esc(fmtEur(worth))+"</b>":"");
   }
-  $("clear-all").disabled=!items.length||readOnly;
+  $("clear-all").disabled=!items.length;
   $("by-loc").setAttribute("aria-pressed",groupBy==="loc");
   $("by-cat").setAttribute("aria-pressed",groupBy==="cat");
   if(!loaded){list.innerHTML="";return}
@@ -312,24 +512,19 @@ function render(){
   list.innerHTML=html;
 }
 
-/* ---------- actions ---------- */
-function byId(id){return items.find(function(i){return i.id===id})}
+/* ---------- Aktionen ---------- */
 function removeItems(list,label){
-  if(!list.length||readOnly)return;
+  if(!list.length)return;
   var now=new Date().toISOString();
-  undoStack=list.map(function(it){return {id:it.id,qty:qtyOf(it)}});
+  undoStack=list.map(function(it){return {id:it.id,qty:qtyOf(it),item:Object.assign({},it)}});
   list.forEach(function(it){clearTimeout(qtyTimers[it.id]);delete pendingQty[it.id]});
-  runBatch(list.map(function(it){return function(){return store.patch(it.id,{status:"used",removedAt:now})}}));
+  store.bulk(list.map(function(it){return it.id}),{status:"used",removedAt:now});
   showToast(label);
-}
-function runBatch(jobs){
-  var i=0;function next(){if(i>=jobs.length)return Promise.resolve();return Promise.resolve(jobs[i++]()).then(next,next)}
-  for(var k=0;k<4;k++)next();
 }
 function undo(){
   if(!undoStack)return;
   var s=undoStack;undoStack=null;hideToast();
-  runBatch(s.map(function(u){return function(){return store.patch(u.id,{status:"in",removedAt:null,qty:u.qty})}}));
+  store.restore(s);
 }
 function showToast(text){
   $("toast-text").textContent=text;$("toast").hidden=false;
@@ -337,7 +532,7 @@ function showToast(text){
 }
 function hideToast(){clearTimeout(toastTimer);$("toast").hidden=true}
 function changeQty(id,delta){
-  var it=byId(id);if(!it||readOnly)return;
+  var it=byId(id);if(!it)return;
   var q=Math.round((qtyOf(it)+delta)*100)/100;
   if(q<=0){removeItems([it],"„"+str(it.name)+"“ entfernt");return}
   pendingQty[id]=q;render();
@@ -384,7 +579,7 @@ function openSheet(id){
     $("session").textContent="";
   }else{
     $("sheet-title").textContent="Einkauf eintragen";$("f-submit").textContent="Hinzufügen";$("f-remove").hidden=true;$("close").textContent="Fertig";
-    session={count:0,sum:0,id:newId()};
+    buy={count:0,sum:0,id:newId()};
     resetForm(true);$("session").textContent="";
   }
   $("scrim").hidden=false;
@@ -394,7 +589,10 @@ function closeSheet(){$("scrim").hidden=true;editId=null;$("fab").focus()}
 $("fab").addEventListener("click",function(){openSheet(null)});
 $("close").addEventListener("click",closeSheet);
 $("scrim").addEventListener("click",function(e){if(e.target===$("scrim"))closeSheet()});
-document.addEventListener("keydown",function(e){if(e.key==="Escape"&&!$("scrim").hidden)closeSheet()});
+document.addEventListener("keydown",function(e){
+  if(e.key!=="Escape")return;
+  if(!$("scrim").hidden)closeSheet();else if(!$("scrim2").hidden)closeHousehold();
+});
 
 $("f-name").addEventListener("input",function(){
   if(editId)return;
@@ -413,7 +611,6 @@ $("f-remove").addEventListener("click",function(){var it=byId(editId);closeSheet
 
 $("form").addEventListener("submit",function(e){
   e.preventDefault();
-  if(readOnly)return;
   var name=$("f-name").value.trim();
   if(!name){$("f-name").focus();return}
   var qty=parseNum($("f-qty").value);if(qty==null||qty<=0)qty=1;
@@ -432,24 +629,53 @@ $("form").addEventListener("submit",function(e){
     clearTimeout(qtyTimers[same.id]);delete pendingQty[same.id];
     store.patch(same.id,patch);
   }else{
-    store.add(newId(),Object.assign({status:"in",removedAt:null,boughtAt:new Date().toISOString(),purchase:session.id},data));
+    store.add(newId(),Object.assign({status:"in",removedAt:null,boughtAt:new Date().toISOString(),purchase:buy.id},data));
   }
   store.product(productKey(name),{name:data.name,unit:data.unit,loc:data.loc,cat:data.cat,shop:data.shop});
-  session.count++;session.sum+=price||0;
-  $("session").textContent="In diesem Einkauf: "+session.count+" Artikel"+(session.sum?" · "+fmtEur(session.sum):"")+". Zuletzt: "+data.name;
+  buy.count++;buy.sum+=price||0;
+  $("session").textContent="In diesem Einkauf: "+buy.count+" Artikel"+(buy.sum?" · "+fmtEur(buy.sum):"")+". Zuletzt: "+data.name;
   resetForm(true);$("f-name").focus();
 });
 
-/* ---------- boot ---------- */
+/* ---------- Haushalt ---------- */
+var deferredInstall=null;
+window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();deferredInstall=e;$("install").hidden=false});
+window.addEventListener("appinstalled",function(){deferredInstall=null;$("install").hidden=true});
+$("install").addEventListener("click",function(){if(!deferredInstall)return;deferredInstall.prompt();deferredInstall=null;$("install").hidden=true});
+function closeHousehold(){$("scrim2").hidden=true;$("hh-open").focus()}
+function openHousehold(){
+  $("hh-who").textContent="Angemeldet als "+userEmail;
+  $("hh-code").hidden=true;$("hh-members").innerHTML="";
+  $("scrim2").hidden=false;
+  sb.from("vorrat_members").select("email,joined_at").order("joined_at").then(function(r){
+    if(r.error||!r.data)return;
+    $("hh-members").innerHTML=r.data.map(function(m){return "<li>"+esc(m.email||"Unbekannt")+"</li>"}).join("");
+  },function(){});
+}
+$("hh-open").addEventListener("click",openHousehold);
+$("hh-close").addEventListener("click",closeHousehold);
+$("scrim2").addEventListener("click",function(e){if(e.target===$("scrim2"))closeHousehold()});
+$("hh-invite").addEventListener("click",function(){
+  var b=$("hh-invite");b.disabled=true;
+  sb.rpc("vorrat_create_invite").then(function(r){
+    b.disabled=false;
+    if(r.error||!r.data){note("Der Code konnte nicht erzeugt werden. Prüfe die Internetverbindung.");return}
+    var c=$("hh-code");c.innerHTML=esc(r.data)+"<small>Gilt 7 Tage, nur einmal.</small>";c.hidden=false;
+  },function(){b.disabled=false;note("Der Code konnte nicht erzeugt werden. Prüfe die Internetverbindung.")});
+});
+$("hh-logout").addEventListener("click",function(){closeHousehold();sb.auth.signOut()});
+
+/* ---------- Start ---------- */
 render();
-function useLocal(msg){store=localStore();store.start();if(msg)note(msg)}
-if(window.claude&&typeof window.claude.use==="function"){
-  window.claude.use("db").then(function(db){
-    if(db){store=dbStore(db);store.start()}
-    else useLocal("Der gemeinsame Bestand ist hier nicht verfügbar. Änderungen bleiben nur auf diesem Gerät.");
-  },function(){useLocal("Der gemeinsame Bestand ist hier nicht verfügbar. Änderungen bleiben nur auf diesem Gerät.")});
+if("serviceWorker" in navigator&&(location.protocol==="https:"||location.hostname==="localhost")){
+  window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){})});
+}
+if(!window.supabase||typeof window.supabase.createClient!=="function"){
+  $("auth-lead").textContent="Die App konnte nicht vollständig geladen werden. Bitte lade die Seite neu.";
 }else{
-  useLocal("");
+  sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false,storageKey:"vorrat-auth"}});
+  if(cacheLoad()){hideAuth();render();note("Zuletzt geladener Stand. Aktualisiere …")}
+  initAuth();
 }
 })();
 </script>
