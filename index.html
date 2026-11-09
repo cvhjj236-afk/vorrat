@@ -758,7 +758,10 @@ $("scan-file").addEventListener("change",function(e){
   shrink(f).then(function(b64){
     return sb.functions.invoke("scan-receipt",{body:{image:b64,mime:"image/jpeg",mode:view==="list"?"list":"receipt"}})
   }).then(function(r){
-    if(r.error||!r.data||r.data.error){var c=r.data&&r.data.error;scanMsg(c==="no_key"?"Die Foto-Funktion ist noch nicht eingerichtet (API-Key fehlt).":c==="not_member"?"Dafür fehlt die Berechtigung.":"Das Foto konnte gerade nicht ausgewertet werden. Versuch es später nochmal.",false);return}
+    if(r.error&&r.error.context&&typeof r.error.context.json==="function"){return r.error.context.json().then(function(j){return {data:j,error:r.error}},function(){return r})}
+    return r;
+  }).then(function(r){
+    if(r.error||!r.data||r.data.error){var c=r.data&&r.data.error,dt=r.data&&(r.data.status||r.data.detail)?" ["+(r.data.status||"")+" "+String(r.data.detail||"").slice(0,160)+"]":"";scanMsg(c==="no_key"?"Die Foto-Funktion ist noch nicht eingerichtet (API-Key fehlt).":c==="not_member"?"Dafür fehlt die Berechtigung.":"Das Foto konnte gerade nicht ausgewertet werden. Versuch es später nochmal."+(c?" ("+c+")":"")+dt,false);return}
     showScan(r.data);
   },function(){scanMsg("Das Foto konnte nicht gelesen werden.",false)});
 });
