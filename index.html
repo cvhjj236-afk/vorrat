@@ -62,6 +62,13 @@ h1{font-family:var(--display);font-weight:700;font-size:34px;letter-spacing:-.02
 .seg button{border:0;background:none;border-radius:999px;padding:6px 14px;font-size:14px;font-weight:500;color:var(--muted)}
 .seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
 
+.views{margin-top:12px}
+.views button{flex:1;display:flex;align-items:center;justify-content:center;gap:6px}
+.badge{font-size:12px;font-weight:700;background:var(--accent);color:var(--accent-ink);border-radius:999px;padding:0 7px;min-width:20px;font-variant-numeric:tabular-nums}
+.views button[aria-pressed="true"] .badge{background:var(--bg);color:var(--ink)}
+.tools[hidden]{display:none}
+.f[hidden]{display:none}
+.toast button[hidden]{display:none}
 .note{margin:12px 0 0;padding:10px 14px;border-radius:var(--r);background:var(--warn-soft);color:var(--warn);font-size:14px}
 .note[hidden]{display:none}
 
@@ -159,7 +166,11 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
         <button class="clear-all" id="clear-all" type="button" disabled>Lager leeren</button>
       </div>
     </div>
-    <div class="tools">
+    <div class="seg views" id="views" role="group" aria-label="Ansicht">
+      <button type="button" id="v-stock" aria-pressed="true">Lager</button>
+      <button type="button" id="v-list" aria-pressed="false">Einkaufsliste<span class="badge" id="list-count" hidden></span></button>
+    </div>
+    <div class="tools" id="tools">
       <input class="search" id="search" type="search" placeholder="Suchen …" aria-label="Im Lager suchen" autocomplete="off">
       <div class="seg" role="group" aria-label="Gruppieren nach">
         <button type="button" id="by-loc" aria-pressed="true">Lagerort</button>
@@ -277,16 +288,20 @@ function productKey(name){var b=new TextEncoder().encode(name.trim().toLowerCase
 function newId(){return "i"+Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
 
 /* ---------- state ---------- */
-var items=[];           // im Lager (status "in")
+var items=[];           // status "in" (Lager) und "list" (Einkaufsliste)
 var products={};        // key -> {name,unit,cat,loc,shop}
 var pendingQty={};      // id -> qty (noch nicht geschrieben)
 var qtyTimers={};
-var groupBy="loc", query="", closed={};
+var groupBy="loc", query="", closed={}, view="stock";
 var loaded=false;
 var editId=null, buy={count:0,sum:0,id:null};
-var undoStack=null, toastTimer=null;
-try{var pref=JSON.parse(localStorage.getItem("vorrat.ui")||"{}");if(pref.groupBy==="cat")groupBy="cat";closed=pref.closed||{}}catch(e){}
-function savePref(){try{localStorage.setItem("vorrat.ui",JSON.stringify({groupBy:groupBy,closed:closed}))}catch(e){}}
+var undoStack=null, toastTimer=null, sheetList=false;
+try{var pref=JSON.parse(localStorage.getItem("vorrat.ui")||"{}");if(pref.groupBy==="cat")groupBy="cat";if(pref.view==="list")view="list";closed=pref.closed||{}}catch(e){}
+function savePref(){try{localStorage.setItem("vorrat.ui",JSON.stringify({groupBy:groupBy,closed:closed,view:view}))}catch(e){}}
+function isLive(st){return st==="in"||st==="list"}
+function stock(){return items.filter(function(i){return i.status==="in"})}
+function shopping(){return items.filter(function(i){return i.status==="list"})}
+function cur(){return view==="list"?shopping():stock()}
 function note(text){var n=$("note");n.textContent=text;n.hidden=!text}
 
 /* ---------- Supabase ---------- */
@@ -312,7 +327,7 @@ function applyLocal(id,patch,base,noRender){
   var cur=i>-1?items[i]:base;
   if(!cur)return;
   var next=Object.assign({},cur,patch);
-  if(next.status!=="in"){if(i>-1)items.splice(i,1)}
+  if(!isLive(next.status)){if(i>-1)items.splice(i,1)}
   else if(i>-1)items[i]=next;else items.push(next);
   if(!noRender){cacheSave();render()}
 }
@@ -325,7 +340,7 @@ var store={
     return Promise.all(jobs.map(function(chunk){return sb.from("vorrat_items").update(toRow(patch)).in("id",chunk).then(done,failed)}));
   },
   restore:function(list){
-    var rows=list.map(function(u){var it=Object.assign({},u.item,{status:"in",removedAt:null,qty:u.qty});applyLocal(it.id,it,it,true);return Object.assign({id:it.id},toRow(it))});
+    var rows=list.map(function(u){var it=Object.assign({},u.item,{removedAt:null,qty:u.qty});applyLocal(it.id,it,it,true);return Object.assign({id:it.id},toRow(it))});
     cacheSave();render();
     return sb.from("vorrat_items").upsert(rows).then(done,failed);
   },
@@ -334,7 +349,7 @@ var store={
 
 function refetch(){
   if(!sb||!dataStarted)return;
-  sb.from("vorrat_items").select("*").eq("status","in").limit(5000).then(function(r){
+  sb.from("vorrat_items").select("*").in("status",["in","list"]).limit(5000).then(function(r){
     if(r.error){loaded=loaded||false;note("Der Bestand lässt sich gerade nicht laden. Prüfe die Internetverbindung.");if(!items.length){loaded=true}render();return}
     items=r.data.map(fromRow);loaded=true;note("");cacheSave();render();
   },function(){note("Der Bestand lässt sich gerade nicht laden. Prüfe die Internetverbindung.");loaded=true;render()});
@@ -348,7 +363,7 @@ function handleChange(p){
   if(p.eventType==="DELETE"){var oid=p.old&&p.old.id;if(oid){var k=items.findIndex(function(x){return x.id===oid});if(k>-1){items.splice(k,1);cacheSave();render()}}return}
   if(!p.new||!p.new.id)return;
   var row=fromRow(p.new),i=items.findIndex(function(x){return x.id===row.id});
-  if(row.status==="in"){if(i>-1)items[i]=row;else items.push(row)}else if(i>-1)items.splice(i,1);else return;
+  if(isLive(row.status)){if(i>-1)items[i]=row;else items.push(row)}else if(i>-1)items.splice(i,1);else return;
   cacheSave();render();
 }
 function startData(){
@@ -451,7 +466,7 @@ function qtyOf(it){return pendingQty[it.id]!=null?pendingQty[it.id]:(num(it.qty)
 function byId(id){return items.find(function(i){return i.id===id})}
 function visible(){
   var q=query.trim().toLowerCase();
-  return items.filter(function(it){return !q||str(it.name).toLowerCase().indexOf(q)>-1||str(it.shop).toLowerCase().indexOf(q)>-1});
+  return cur().filter(function(it){return !q||str(it.name).toLowerCase().indexOf(q)>-1||str(it.shop).toLowerCase().indexOf(q)>-1});
 }
 function sortRows(a,b){
   var da=daysUntil(str(a.mhd)),dbb=daysUntil(str(b.mhd));
@@ -462,18 +477,27 @@ function sortRows(a,b){
 }
 function render(){
   var list=$("list");
-  var soon=items.filter(function(i){var d=daysUntil(str(i.mhd));return d!=null&&d<=3}).length;
-  var worth=items.reduce(function(s,i){return s+(num(i.price)||0)},0);
-  var st=$("stats");
+  var inStock=stock(),onList=shopping();
+  var soon=inStock.filter(function(i){var d=daysUntil(str(i.mhd));return d!=null&&d<=3}).length;
+  var worth=inStock.reduce(function(s,i){return s+(num(i.price)||0)},0);
+  var st=$("stats"),isList=view==="list";
   if(!loaded){st.textContent="Lade Bestand …"}
+  else if(isList){st.innerHTML="<b>"+onList.length+"</b> "+(onList.length===1?"Artikel":"Artikel")+" auf der Einkaufsliste"}
   else{
-    st.innerHTML="<b>"+items.length+"</b> Artikel im Lager"+(soon?' · <span class="soon">'+soon+" "+(soon===1?"läuft":"laufen")+" bald ab</span>":"")+(worth?" · Einkaufswert <b>"+esc(fmtEur(worth))+"</b>":"");
+    st.innerHTML="<b>"+inStock.length+"</b> Artikel im Lager"+(soon?' · <span class="soon">'+soon+" "+(soon===1?"läuft":"laufen")+" bald ab</span>":"")+(worth?" · Einkaufswert <b>"+esc(fmtEur(worth))+"</b>":"");
   }
-  $("clear-all").disabled=!items.length;
+  $("v-stock").setAttribute("aria-pressed",!isList);
+  $("v-list").setAttribute("aria-pressed",isList);
+  var lc=$("list-count");lc.hidden=!(loaded&&onList.length&&!isList);lc.textContent=onList.length;
+  $("tools").hidden=isList;
+  $("clear-all").textContent=isList?"Liste leeren":"Lager leeren";
+  $("fab").lastChild.textContent=isList?"Auf die Liste":"Einkauf eintragen";
+  $("clear-all").disabled=!cur().length;
   $("by-loc").setAttribute("aria-pressed",groupBy==="loc");
   $("by-cat").setAttribute("aria-pressed",groupBy==="cat");
   if(!loaded){list.innerHTML="";return}
-  if(!items.length){
+  if(isList){renderList(onList);return}
+  if(!inStock.length){
     list.innerHTML='<div class="blank"><h2>Das Lager ist leer</h2><p>Trag deinen ersten Einkauf ein. Jeder Artikel landet automatisch hier, sortiert nach Lagerort.</p></div>';
     return;
   }
@@ -512,6 +536,43 @@ function render(){
   list.innerHTML=html;
 }
 
+function renderList(rows){
+  var list=$("list");
+  if(!rows.length){list.innerHTML='<div class="blank"><h2>Die Einkaufsliste ist leer</h2><p>Schreib auf, was du besorgen musst. Mit dem Haken landet der Artikel direkt im Lager.</p></div>';return}
+  var groups={};
+  rows.forEach(function(it){var g=str(it.shop)||"Ohne Geschäft";(groups[g]=groups[g]||[]).push(it)});
+  var names=Object.keys(groups).sort(function(a,b){if(a==="Ohne Geschäft")return 1;if(b==="Ohne Geschäft")return -1;return a.localeCompare(b,"de")});
+  var html="";
+  names.forEach(function(g){
+    var isClosed=!!closed["shop:"+g];
+    html+='<section class="group'+(isClosed?" closed":"")+'"><div class="shelf">'+
+      '<button type="button" class="label" data-act="toggle-shop" data-g="'+esc(g)+'" aria-expanded="'+(!isClosed)+'"><span class="chev" aria-hidden="true">▼</span><span class="name">'+esc(g)+'</span><span class="count">'+groups[g].length+'</span></button>'+
+      '<button type="button" class="empty-group" data-act="clear-group" data-g="'+esc(g)+'">Gruppe leeren</button></div><ul class="rows">';
+    groups[g].sort(function(a,b){return str(a.name).localeCompare(str(b.name),"de")}).forEach(function(it){
+      var id=esc(it.id);
+      html+='<li class="row">'+
+        '<button type="button" class="info" data-act="edit" data-id="'+id+'"><span class="title">'+esc(str(it.name)||"Ohne Namen")+'</span><span class="meta">'+esc(str(it.cat)||"Sonstiges")+'</span></button>'+
+        '<div class="qty"><button type="button" data-act="dec" data-id="'+id+'" aria-label="Eins weniger">−</button><span class="n">'+esc(fmtNum(qtyOf(it)))+'<small>'+esc(str(it.unit))+'</small></span><button type="button" data-act="inc" data-id="'+id+'" aria-label="Eins mehr">+</button></div>'+
+        '<button type="button" class="done" data-act="bought" data-id="'+id+'" aria-label="'+esc(str(it.name))+' gekauft, ins Lager legen"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10.5l4 4 8-9"/></svg></button></li>';
+    });
+    html+="</ul></section>";
+  });
+  list.innerHTML=html;
+}
+function markBought(it){
+  clearTimeout(qtyTimers[it.id]);var q=qtyOf(it);delete pendingQty[it.id];
+  var same=stock().find(function(i){return str(i.name).toLowerCase()===str(it.name).toLowerCase()&&str(i.loc)===str(it.loc)&&!str(i.mhd)&&str(i.unit)===str(it.unit)});
+  var now=new Date().toISOString();
+  if(same){
+    clearTimeout(qtyTimers[same.id]);delete pendingQty[same.id];
+    store.patch(same.id,{qty:Math.round((qtyOf(same)+q)*100)/100,shop:str(it.shop)||same.shop||null});
+    store.patch(it.id,{status:"gone",removedAt:now});
+  }else{
+    store.patch(it.id,{status:"in",qty:q,boughtAt:now,removedAt:null,purchase:newId()});
+  }
+  undoStack=null;showToast("„"+str(it.name)+"“ liegt jetzt im Lager",true);
+}
+
 /* ---------- Aktionen ---------- */
 function removeItems(list,label){
   if(!list.length)return;
@@ -526,8 +587,8 @@ function undo(){
   var s=undoStack;undoStack=null;hideToast();
   store.restore(s);
 }
-function showToast(text){
-  $("toast-text").textContent=text;$("toast").hidden=false;
+function showToast(text,noUndo){
+  $("toast-text").textContent=text;$("undo").hidden=!!noUndo;$("toast").hidden=false;
   clearTimeout(toastTimer);toastTimer=setTimeout(function(){hideToast();undoStack=null},8000);
 }
 function hideToast(){clearTimeout(toastTimer);$("toast").hidden=true}
@@ -548,10 +609,14 @@ $("list").addEventListener("click",function(e){
   else if(act==="dec")changeQty(id,-1);
   else if(act==="remove"){var it=byId(id);if(it)removeItems([it],"„"+str(it.name)+"“ entfernt")}
   else if(act==="edit")openSheet(id);
+  else if(act==="bought"){var bi=byId(id);if(bi)markBought(bi)}
   else if(act==="toggle"){var k=groupBy+":"+g;closed[k]=!closed[k];savePref();render()}
-  else if(act==="clear-group"){var l=visible().filter(function(i){return (str(i[groupBy])||"Sonstiges")===g});removeItems(l,l.length+" Artikel aus „"+g+"“ entfernt")}
+  else if(act==="toggle-shop"){var ks="shop:"+g;closed[ks]=!closed[ks];savePref();render()}
+  else if(act==="clear-group"){var l=view==="list"?shopping().filter(function(i){return (str(i.shop)||"Ohne Geschäft")===g}):visible().filter(function(i){return (str(i[groupBy])||"Sonstiges")===g});removeItems(l,l.length+" Artikel aus „"+g+"“ entfernt")}
 });
-$("clear-all").addEventListener("click",function(){var n=items.length;removeItems(items.slice(),"Lager geleert: "+n+" Artikel entfernt")});
+$("clear-all").addEventListener("click",function(){var l=cur().slice(),n=l.length;removeItems(l,(view==="list"?"Liste geleert: ":"Lager geleert: ")+n+" Artikel entfernt")});
+$("v-stock").addEventListener("click",function(){view="stock";savePref();render()});
+$("v-list").addEventListener("click",function(){view="list";savePref();render()});
 $("undo").addEventListener("click",undo);
 $("search").addEventListener("input",function(e){query=e.target.value;render()});
 $("by-loc").addEventListener("click",function(){groupBy="loc";savePref();render()});
@@ -567,18 +632,22 @@ function resetForm(keepShop){
 }
 function openSheet(id){
   editId=id||null;
+  var editing=editId?byId(editId):null;
+  var listMode=editing?editing.status==="list":view==="list";
+  sheetList=listMode;
+  ["f-loc","f-cat","f-mhd","f-price"].forEach(function(x){$(x).parentNode.hidden=listMode&&(x==="f-mhd"||x==="f-price")});
   var shops={};Object.keys(products).forEach(function(k){var s=str(products[k].shop);if(s)shops[s]=1});
   $("shops").innerHTML=Object.keys(shops).map(function(s){return '<option value="'+esc(s)+'">'}).join("");
   if(editId){
     var it=byId(editId);if(!it)return;
-    $("sheet-title").textContent="Artikel bearbeiten";$("f-submit").textContent="Speichern";$("f-remove").hidden=false;$("close").textContent="Abbrechen";
+    $("sheet-title").textContent=listMode?"Listeneintrag bearbeiten":"Artikel bearbeiten";$("f-submit").textContent="Speichern";$("f-remove").hidden=false;$("close").textContent="Abbrechen";
     resetForm(false);
     $("f-name").value=str(it.name);$("f-qty").value=fmtNum(qtyOf(it)).replace(/\s/g,"");
     fill($("f-unit"),UNITS,str(it.unit)||"Stk");fill($("f-loc"),LOCS,str(it.loc)||"Sonstiges");fill($("f-cat"),CATS,str(it.cat)||"Sonstiges");
     $("f-mhd").value=str(it.mhd);$("f-price").value=num(it.price)!=null?String(it.price).replace(".",","):"";$("f-shop").value=str(it.shop);
     $("session").textContent="";
   }else{
-    $("sheet-title").textContent="Einkauf eintragen";$("f-submit").textContent="Hinzufügen";$("f-remove").hidden=true;$("close").textContent="Fertig";
+    $("sheet-title").textContent=listMode?"Auf die Einkaufsliste":"Einkauf eintragen";$("f-submit").textContent="Hinzufügen";$("f-remove").hidden=true;$("close").textContent="Fertig";
     buy={count:0,sum:0,id:newId()};
     resetForm(true);$("session").textContent="";
   }
@@ -616,24 +685,27 @@ $("form").addEventListener("submit",function(e){
   var qty=parseNum($("f-qty").value);if(qty==null||qty<=0)qty=1;
   var price=parseNum($("f-price").value);if(price!=null&&price<0)price=null;
   var data={name:name.slice(0,80),qty:qty,unit:$("f-unit").value,loc:$("f-loc").value,cat:$("f-cat").value,mhd:$("f-mhd").value||null,price:price,shop:$("f-shop").value.trim().slice(0,60)||null};
+  if(sheetList){data.mhd=null;data.price=null}
+  if(editId&&sheetList){var le=byId(editId);if(le&&le.status==="list"){delete data.mhd;delete data.price}}
   if(editId){
     clearTimeout(qtyTimers[editId]);delete pendingQty[editId];
     store.patch(editId,data);
     store.product(productKey(name),{name:data.name,unit:data.unit,loc:data.loc,cat:data.cat,shop:data.shop});
     closeSheet();return;
   }
-  var same=items.find(function(i){return str(i.name).toLowerCase()===name.toLowerCase()&&str(i.loc)===data.loc&&(str(i.mhd)||null)===data.mhd&&str(i.unit)===data.unit});
+  var wantSt=sheetList?"list":"in";
+  var same=items.find(function(i){return i.status===wantSt&&str(i.name).toLowerCase()===name.toLowerCase()&&(sheetList?(str(i.shop)||null)===data.shop:str(i.loc)===data.loc&&(str(i.mhd)||null)===data.mhd)&&str(i.unit)===data.unit});
   if(same){
     var patch={qty:Math.round((qtyOf(same)+qty)*100)/100,shop:data.shop||same.shop||null};
     if(price!=null)patch.price=Math.round(((num(same.price)||0)+price)*100)/100;
     clearTimeout(qtyTimers[same.id]);delete pendingQty[same.id];
     store.patch(same.id,patch);
   }else{
-    store.add(newId(),Object.assign({status:"in",removedAt:null,boughtAt:new Date().toISOString(),purchase:buy.id},data));
+    store.add(newId(),Object.assign({status:wantSt,removedAt:null,boughtAt:new Date().toISOString(),purchase:buy.id},data));
   }
   store.product(productKey(name),{name:data.name,unit:data.unit,loc:data.loc,cat:data.cat,shop:data.shop});
   buy.count++;buy.sum+=price||0;
-  $("session").textContent="In diesem Einkauf: "+buy.count+" Artikel"+(buy.sum?" · "+fmtEur(buy.sum):"")+". Zuletzt: "+data.name;
+  $("session").textContent=sheetList?"Auf der Liste: "+buy.count+" neu. Zuletzt: "+data.name:"In diesem Einkauf: "+buy.count+" Artikel"+(buy.sum?" · "+fmtEur(buy.sum):"")+". Zuletzt: "+data.name;
   resetForm(true);$("f-name").focus();
 });
 
