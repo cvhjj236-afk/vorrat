@@ -62,6 +62,11 @@ h1{font-family:var(--display);font-weight:700;font-size:34px;letter-spacing:-.02
 .seg button{border:0;background:none;border-radius:999px;padding:6px 14px;font-size:14px;font-weight:500;color:var(--muted)}
 .seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
 
+.scanrows{list-style:none;margin:12px 0 0;padding:0}
+.scanrows li{display:grid;grid-template-columns:auto 1fr 56px 64px;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+.scanrows input[type=text]{width:100%;min-width:0;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 8px;font-size:14px}
+.scanrows input[type=checkbox]{width:20px;height:20px;accent-color:var(--accent)}
+.scanrows.nolprice li{grid-template-columns:auto 1fr 56px}.scanrows.nolprice .pr{display:none}
 .views{margin-top:12px}
 .views button{flex:1;display:flex;align-items:center;justify-content:center;gap:6px}
 .badge{font-size:12px;font-weight:700;background:var(--accent);color:var(--accent-ink);border-radius:999px;padding:0 7px;min-width:20px;font-variant-numeric:tabular-nums}
@@ -162,6 +167,7 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
         <p class="stats" id="stats">Lade Bestand …</p>
       </div>
       <div class="btns">
+        <button class="pillbtn" id="scan" type="button">Foto</button>
         <button class="pillbtn" id="hh-open" type="button">Haushalt</button>
         <button class="clear-all" id="clear-all" type="button" disabled>Lager leeren</button>
       </div>
@@ -214,6 +220,22 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   </div>
 </div>
 
+<input type="file" id="scan-file" accept="image/*" hidden>
+<div class="scrim" id="scrim3" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sc-title">
+    <div class="sheet-head">
+      <h2 id="sc-title">Foto auswerten</h2>
+      <button class="x" id="sc-close" type="button">Abbrechen</button>
+    </div>
+    <p class="hint" id="sc-msg"></p>
+    <div id="sc-body" hidden>
+      <div class="seg" role="group" aria-label="Ziel"><button type="button" id="sc-stock" aria-pressed="true">Ins Lager</button><button type="button" id="sc-list" aria-pressed="false">Auf die Liste</button></div>
+      <div class="f wide" style="margin-top:10px"><label for="sc-shop">Geschäft</label><input id="sc-shop" type="text" list="shops" placeholder="optional"></div>
+      <ul class="scanrows" id="sc-rows"></ul>
+      <div class="actions"><button class="primary" id="sc-ok" type="button">Übernehmen</button></div>
+    </div>
+  </div>
+</div>
 <div class="scrim" id="scrim2" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="hh-title">
     <div class="sheet-head">
@@ -707,6 +729,59 @@ $("form").addEventListener("submit",function(e){
   buy.count++;buy.sum+=price||0;
   $("session").textContent=sheetList?"Auf der Liste: "+buy.count+" neu. Zuletzt: "+data.name:"In diesem Einkauf: "+buy.count+" Artikel"+(buy.sum?" · "+fmtEur(buy.sum):"")+". Zuletzt: "+data.name;
   resetForm(true);$("f-name").focus();
+});
+
+/* ---------- Foto scannen ---------- */
+var scanData=null,scanTo="in",DEFLOC={"Tiefkühlkost":"Tiefkühler","Milchprodukte & Eier":"Kühlschrank","Fleisch & Fisch":"Kühlschrank","Obst & Gemüse":"Kühlschrank","Drogerie":"Bad","Haushalt":"Vorratsschrank"};
+function scanMsg(t,body){$("sc-msg").textContent=t;$("sc-body").hidden=!body}
+function openScan(){$("scrim3").hidden=false;scanMsg("Foto wird ausgewertet …",false)}
+function closeScan(){$("scrim3").hidden=true;scanData=null;$("scan-file").value=""}
+function shrink(file){return new Promise(function(res,rej){
+  var u=URL.createObjectURL(file),im=new Image();
+  im.onload=function(){var m=1600,k=Math.min(1,m/Math.max(im.width,im.height)),c=document.createElement("canvas");
+    c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext("2d").drawImage(im,0,0,c.width,c.height);
+    URL.revokeObjectURL(u);res(c.toDataURL("image/jpeg",0.82).split(",")[1])};
+  im.onerror=function(){URL.revokeObjectURL(u);rej(new Error("img"))};im.src=u})}
+function scanTarget(t){scanTo=t;$("sc-stock").setAttribute("aria-pressed",t==="in");$("sc-list").setAttribute("aria-pressed",t==="list");$("sc-rows").classList.toggle("nolprice",t==="list")}
+function showScan(d){
+  scanData=d;
+  if(!d.items.length){scanMsg("Ich konnte keine Artikel erkennen. Versuch ein schärferes Foto bei gutem Licht.",false);return}
+  scanMsg("Prüfe die erkannten Artikel und entferne Falsches, dann übernehmen.",true);
+  $("sc-shop").value=d.shop||"";
+  scanTarget(view==="list"?"list":"in");
+  $("sc-rows").innerHTML=d.items.map(function(i,n){return '<li><input type="checkbox" checked data-n="'+n+'" aria-label="Übernehmen"><input type="text" class="nm" value="'+esc(i.name)+'" aria-label="Artikel"><input type="text" class="qt" inputmode="decimal" value="'+esc(fmtNum(i.qty))+'" aria-label="Menge"><input type="text" class="pr" inputmode="decimal" value="'+(i.price==null?"":esc(String(i.price).replace(".",",")))+'" placeholder="€" aria-label="Preis"></li>'}).join("");
+}
+$("scan").addEventListener("click",function(){$("scan-file").click()});
+$("scan-file").addEventListener("change",function(e){
+  var f=e.target.files&&e.target.files[0];if(!f)return;
+  openScan();
+  shrink(f).then(function(b64){
+    return sb.functions.invoke("scan-receipt",{body:{image:b64,mime:"image/jpeg",mode:view==="list"?"list":"receipt"}})
+  }).then(function(r){
+    if(r.error||!r.data||r.data.error){var c=r.data&&r.data.error;scanMsg(c==="no_key"?"Die Foto-Funktion ist noch nicht eingerichtet (API-Key fehlt).":c==="not_member"?"Dafür fehlt die Berechtigung.":"Das Foto konnte gerade nicht ausgewertet werden. Versuch es später nochmal.",false);return}
+    showScan(r.data);
+  },function(){scanMsg("Das Foto konnte nicht gelesen werden.",false)});
+});
+$("sc-stock").addEventListener("click",function(){scanTarget("in")});
+$("sc-list").addEventListener("click",function(){scanTarget("list")});
+$("sc-close").addEventListener("click",closeScan);
+$("sc-ok").addEventListener("click",function(){
+  if(!scanData)return;
+  var shop=$("sc-shop").value.trim().slice(0,60)||null,pid=newId(),n=0,rows=$("sc-rows").children;
+  for(var k=0;k<rows.length;k++){
+    var li=rows[k];if(!li.querySelector("[type=checkbox]").checked)continue;
+    var src=scanData.items[+li.querySelector("[type=checkbox]").dataset.n],name=li.querySelector(".nm").value.trim();if(!name)continue;
+    var qty=parseNum(li.querySelector(".qt").value);if(qty==null||qty<=0)qty=1;
+    var price=scanTo==="in"?parseNum(li.querySelector(".pr").value):null;if(price!=null&&price<0)price=null;
+    var pk=products[productKey(name)];
+    var data={name:name.slice(0,80),qty:qty,unit:src.unit,loc:(pk&&pk.loc)||DEFLOC[src.cat]||"Vorratsschrank",cat:src.cat,mhd:null,price:price,shop:shop};
+    var same=items.find(function(i){return i.status===scanTo&&str(i.name).toLowerCase()===name.toLowerCase()&&str(i.unit)===data.unit&&(scanTo==="list"?(str(i.shop)||null)===shop:str(i.loc)===data.loc&&!str(i.mhd))});
+    if(same){var pt={qty:Math.round((qtyOf(same)+qty)*100)/100};if(price!=null)pt.price=Math.round(((num(same.price)||0)+price)*100)/100;clearTimeout(qtyTimers[same.id]);delete pendingQty[same.id];store.patch(same.id,pt)}
+    else store.add(newId(),Object.assign({status:scanTo,removedAt:null,boughtAt:new Date().toISOString(),purchase:pid},data));
+    store.product(productKey(name),{name:data.name,unit:data.unit,loc:data.loc,cat:data.cat,shop:data.shop});n++;
+  }
+  closeScan();view=scanTo==="list"?"list":"stock";savePref();render();
+  showToast(n+" Artikel "+(scanTo==="list"?"auf die Liste gesetzt":"ins Lager gelegt"),true);
 });
 
 /* ---------- Haushalt ---------- */
