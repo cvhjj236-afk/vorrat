@@ -248,6 +248,12 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     <button class="primary" id="hh-rename" type="button">Namen speichern</button>
     <h3>Mitglieder</h3>
     <ul class="members" id="hh-members"></ul>
+    <h3>Meine Haushalte</h3>
+    <ul class="members" id="hh-list"></ul>
+    <div class="f"><input id="hh-new-name" type="text" maxlength="60" placeholder="Name für weiteren Haushalt" aria-label="Name für weiteren Haushalt"></div>
+    <button class="primary" id="hh-new" type="button">Weiteren Haushalt anlegen</button>
+    <div class="f"><input id="hh-join-code" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Einladungscode" aria-label="Einladungscode"></div>
+    <button class="primary" id="hh-join" type="button">Mit Code beitreten</button>
     <h3>Person einladen</h3>
     <p class="hint">Erzeuge einen Code und schick ihn der Person. Sie registriert sich in der App und gibt den Code ein. Der Code gilt 7 Tage und nur einmal.</p>
     <button class="primary" id="hh-invite" type="button">Einladungscode erzeugen</button>
@@ -812,12 +818,32 @@ function openHousehold(){
   $("hh-who").textContent="Angemeldet als "+userEmail;
   $("hh-code").hidden=true;$("hh-members").innerHTML="";
   $("scrim2").hidden=false;
+  loadHouseholds();
   sb.from("vorrat_households").select("name").limit(1).then(function(r){if(r.data&&r.data[0])$("hh-name").value=r.data[0].name},function(){});
   sb.from("vorrat_members").select("email,joined_at").order("joined_at").then(function(r){
     if(r.error||!r.data)return;
     $("hh-members").innerHTML=r.data.map(function(m){return "<li>"+esc(m.email||"Unbekannt")+"</li>"}).join("");
   },function(){});
 }
+function reloadAll(){closeHousehold();stopData();cacheClear();items=[];checkedFor=null;checkMember()}
+function loadHouseholds(){
+  $("hh-list").innerHTML="";
+  sb.rpc("vorrat_my_households").then(function(r){
+    if(r.error||!r.data)return;
+    $("hh-list").innerHTML=r.data.map(function(h){return "<li>"+esc(h.name)+(h.active?" ✓":" <button class=\"linkbtn\" type=\"button\" data-sw=\""+esc(h.id)+"\">Wechseln</button>")+"</li>"}).join("");
+  },function(){});
+}
+$("hh-list").addEventListener("click",function(e){
+  var id=e.target&&e.target.getAttribute&&e.target.getAttribute("data-sw");if(!id)return;
+  sb.rpc("vorrat_switch_household",{p_id:id}).then(function(r){if(r.data===true)reloadAll();else note("Das hat nicht geklappt.")},function(){note("Keine Verbindung.")});
+});
+$("hh-new").addEventListener("click",function(){
+  sb.rpc("vorrat_create_household",{p_name:$("hh-new-name").value.trim()}).then(function(r){if(r.data===true){$("hh-new-name").value="";reloadAll()}else note("Das hat nicht geklappt.")},function(){note("Keine Verbindung.")});
+});
+$("hh-join").addEventListener("click",function(){
+  var c=$("hh-join-code").value.trim();if(!c)return;
+  sb.rpc("vorrat_join",{p_code:c}).then(function(r){if(r.data===true){$("hh-join-code").value="";reloadAll()}else note("Dieser Code ist ungültig, schon benutzt oder abgelaufen.")},function(){note("Keine Verbindung.")});
+});
 $("hh-open").addEventListener("click",openHousehold);
 $("hh-rename").addEventListener("click",function(){
   sb.rpc("vorrat_rename_household",{p_name:$("hh-name").value}).then(function(r){note(r.data===true?"Name gespeichert.":"Das hat nicht geklappt.")},function(){note("Keine Verbindung.")});
@@ -826,7 +852,7 @@ $("hh-leave").addEventListener("click",function(){
   if(!confirm("Haushalt wirklich verlassen? Wenn du die letzte Person bist, werden alle Daten des Haushalts gelöscht."))return;
   sb.rpc("vorrat_leave_household").then(function(r){
     if(r.data!==true){note("Das hat nicht geklappt.");return}
-    closeHousehold();stopData();cacheClear();items=[];checkedFor=null;checkMember();
+    reloadAll();
   },function(){note("Keine Verbindung.")});
 });
 $("hh-close").addEventListener("click",closeHousehold);
