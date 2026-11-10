@@ -45,6 +45,7 @@ Deno.serve(async (req) => {
     } else if (!img || img.length > 6_000_000) return json({ error: "image" }, 400);
     const key = Deno.env.get("GOOGLE_API_KEY");
     if (!key) return json({ error: "no_key" }, 500);
+    const recipeCategories = ["Frühstück", "Hauptgerichte", "Suppen & Eintöpfe", "Salate & Beilagen", "Snacks & Kleinigkeiten", "Nachspeisen & Backen"];
     const recipeUnits = [...UNITS, "EL", "TL", "Prise", "Bund"];
     const available = (body.ingredients ?? []).slice(0, 100).map((i) => ({
       name: String(i?.name ?? "").slice(0, 80),
@@ -52,7 +53,7 @@ Deno.serve(async (req) => {
       unit: String(i?.unit ?? "Stk").slice(0, 16),
     })).filter((i) => i.name);
     const prompt = recipeMode
-      ? "Du bist eine praktische Kochassistenz. Erstelle genau 4 unterschiedliche, alltagstaugliche Rezeptideen auf Deutsch für diesen Haushalt. Verwende möglichst viele der vorhandenen Zutaten; fehlende Grundzutaten wie Salz, Pfeffer oder Öl sind erlaubt. Erfinde keine vorhandenen Vorräte. Antworte NUR als JSON ohne Markdown im Format {\"recipes\":[{\"name\":string,\"description\":string,\"minutes\":number,\"servings\":number,\"ingredients\":[{\"name\":string,\"qty\":number,\"unit\":string}],\"steps\":[string]}]}. Zutaten im JSON sind die vollständigen Zutaten für das Rezept, Mengen für 2 Portionen. Einheiten nur aus " + JSON.stringify(recipeUnits) + ". Verwende klare, kurze Kochschritte und Zutaten mit üblichen deutschen Namen. Vorhandene Zutaten: " + JSON.stringify(available)
+      ? "Du bist eine praktische Kochassistenz. Erstelle genau 4 unterschiedliche, alltagstaugliche Rezeptideen auf Deutsch für diesen Haushalt. Verwende möglichst viele der vorhandenen Zutaten; fehlende Grundzutaten wie Salz, Pfeffer oder Öl sind erlaubt. Erfinde keine vorhandenen Vorräte. Antworte NUR als JSON ohne Markdown im Format {\"recipes\":[{\"name\":string,\"description\":string,\"minutes\":number,\"servings\":number,\"ingredients\":[{\"name\":string,\"qty\":number,\"unit\":string}],\"categories\":[string],\"steps\":[string]}]}. Zutaten im JSON sind die vollständigen Zutaten für das Rezept, Mengen für 2 Portionen. Einheiten nur aus " + JSON.stringify(recipeUnits) + ". Verwende klare, kurze Kochschritte und Zutaten mit üblichen deutschen Namen. Ergänze für jedes Rezept categories als JSON-Liste mit einer oder mehreren passenden Kategorien ausschließlich aus Frühstück, Hauptgerichte, Suppen & Eintöpfe, Salate & Beilagen, Snacks & Kleinigkeiten, Nachspeisen & Backen. Ein Rezept darf mehreren Kategorien zugeordnet werden. Vorhandene Zutaten: " + JSON.stringify(available)
       : "Das Foto zeigt die Verpackung eines Lebensmittels. Lies das Mindesthaltbarkeitsdatum (MHD), nicht Herstellungs-, Abpack- oder Losnummern. Gib das Datum ausschließlich als YYYY-MM-DD zurück, wenn Tag, Monat und Jahr sicher lesbar sind; sonst null. Antworte NUR als JSON ohne Erklärung im Format {\"item_name\":string|null,\"mhd\":string|null}. item_name ist der Produktname, wenn er lesbar ist. Bei mehrdeutigem oder unvollständigem Datum muss mhd null sein.";
     const model = Deno.env.get("GEMINI_MODEL") || 'gemini-3.5-flash-lite';
     const gen = (think: boolean) => fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent', {
@@ -79,6 +80,7 @@ Deno.serve(async (req) => {
       if (recipeMode) {
         const recipes = (Array.isArray(p.recipes) ? p.recipes : []).slice(0, 6).map((x: Record<string, unknown>) => ({
           name: String(x.name ?? "").slice(0, 120),
+          categories: recipeCategories.filter((c) => Array.isArray(x.categories) && x.categories.includes(c)),
           description: String(x.description ?? "").slice(0, 240),
           minutes: typeof x.minutes === "number" && x.minutes > 0 ? Math.min(Math.round(x.minutes), 300) : null,
           servings: typeof x.servings === "number" && x.servings > 0 ? Math.min(Math.round(x.servings), 20) : 2,
