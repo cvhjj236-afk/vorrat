@@ -177,9 +177,20 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .plan-picks li span{flex:1;min-width:0;overflow-wrap:anywhere}
 .plan-picks button{border:0;background:none;color:var(--crit);font-size:20px;padding:2px 8px}
 .plan-empty{color:var(--muted);font-size:14px;margin:0 0 10px}
-.plan-add{display:flex;gap:8px;margin-top:10px}
-.plan-add select{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px}
-.plan-add button{flex:none}
+.plan-add{margin-top:10px}
+.plan-add>button{min-height:44px}
+.plan-picker{margin-top:12px;padding:12px;background:var(--bg);border:1px solid var(--line);border-radius:var(--r);min-width:0}
+.plan-picker .search{width:100%;font-size:16px}
+.plan-options{list-style:none;padding:0;margin:10px 0;max-height:260px;overflow-y:auto;overscroll-behavior:contain}
+.plan-options li[hidden]{display:none}
+.plan-options label{display:flex;align-items:center;gap:10px;min-height:48px;padding:10px 8px;border-radius:8px;cursor:pointer;overflow-wrap:anywhere}
+.plan-options label:has(input:checked){background:var(--accent-soft)}
+.plan-options input{width:22px;height:22px;flex:none;accent-color:var(--accent)}
+.plan-options span{min-width:0}
+.plan-picker-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.plan-picker-actions .primary{flex:1 1 160px;width:auto;min-width:0}
+.plan-picker-actions .pillbtn{min-height:44px}
+.plan-picker-count{font-size:13px;color:var(--muted);margin:8px 0}
 .plan-message{color:var(--muted);font-size:14px;margin:8px 0}
 
 .hint{color:var(--muted);font-size:14px;margin:0 0 10px}
@@ -201,8 +212,6 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .linkbtn{background:none;border:0;color:var(--muted);text-decoration:underline;text-underline-offset:3px;font-size:14px;padding:8px;justify-self:center}
 @media (max-width:400px){ h1{font-size:28px} .qty .n{min-width:44px} .qty button{width:30px;height:30px} }
 @media (max-width:400px){
-  .plan-add{flex-wrap:wrap}
-  .plan-add select{flex-basis:100%;max-width:100%}
   .recipe-edit-row{grid-template-columns:minmax(0,1fr) 54px 68px 28px;gap:4px}
   .recipe-edit-row input,.recipe-edit-row select{padding:8px 4px}
 }
@@ -395,6 +404,7 @@ var items=[];           // status "in" (Lager) und "list" (Einkaufsliste)
 var products={};        // key -> {name,unit,cat,loc,shop}
 var recipes=[],recipeSuggestions=[],recipeBusy=false,recipeError="";
 var mealPlanEntries=[],mealPlanLoaded=false,mealPlanBusy=false,mealPlanError="",mealPlanWeekOffset=0;
+var planPickerDate="",planPickerQuery="",planPickerNames=[];
 var pendingQty={};      // id -> qty (noch nicht geschrieben)
 var qtyTimers={};
 var groupBy="loc", query="", closed={}, view="stock";
@@ -497,11 +507,12 @@ function changeMealPlan(date,name,add){
   if(mealPlanBusy)return;
   mealPlanBusy=true;mealPlanError="";render();
   var q=add
-    ?sb.from("vorrat_mealplan").insert({plan_date:date,recipe_name:name})
+    ?sb.from("vorrat_mealplan").insert((Array.isArray(name)?name:[name]).map(function(n){return {plan_date:date,recipe_name:n}}))
     :sb.from("vorrat_mealplan").delete().eq("plan_date",date).eq("recipe_name",name);
   q.then(function(r){
     mealPlanBusy=false;
     if(r.error){mealPlanError="Die Änderung konnte nicht gespeichert werden.";render();return}
+    if(add&&planPickerDate===date){planPickerDate="";planPickerQuery="";planPickerNames=[]}
     loadMealPlan();
   },function(){mealPlanBusy=false;mealPlanError="Keine Verbindung. Bitte versuch es noch einmal.";render()});
 }
@@ -524,7 +535,7 @@ function startData(){
 function stopData(){
   dataStarted=false;subscribedOnce=false;
   if(channel&&sb){try{sb.removeChannel(channel)}catch(e){}}channel=null;
-  items=[];products={};recipes=[];recipeSuggestions=[];mealPlanEntries=[];mealPlanLoaded=false;mealPlanBusy=false;pendingQty={};loaded=false;render();
+  items=[];products={};recipes=[];recipeSuggestions=[];mealPlanEntries=[];mealPlanLoaded=false;mealPlanBusy=false;planPickerDate="";planPickerQuery="";planPickerNames=[];pendingQty={};loaded=false;render();
 }
 document.addEventListener("visibilitychange",function(){if(!document.hidden&&dataStarted)refetch()});
 
@@ -757,12 +768,12 @@ function renderRecipes(){
   $("list").innerHTML=html;
 }
 function renderMealPlan(){
-  var selected={};Array.prototype.forEach.call($("list").querySelectorAll("[data-plan-select]"),function(el){selected[el.dataset.planSelect]=el.value});
+  var searchField=$("plan-recipe-search"),restoreSearch=searchField&&document.activeElement===searchField;
   var dates=planWeekDates(),start=localISO(dates[0]),end=localISO(dates[6]);
   var dateFmt=new Intl.DateTimeFormat("de-AT",{day:"numeric",month:"short"});
   var weekLabel=dateFmt.format(dates[0])+" – "+dateFmt.format(dates[6])+" "+dates[6].getFullYear();
   var html='<div class="plan-toolbar"><button type="button" data-plan-action="week" data-offset="-1" aria-label="Vorige Woche">‹</button><strong>'+esc(weekLabel)+'</strong><button type="button" data-plan-action="week" data-offset="1" aria-label="Nächste Woche">›</button><button type="button" data-plan-action="today">Heute</button></div>';
-  if(mealPlanError)html+='<p class="plan-message" role="alert">'+esc(mealPlanError)+'</p>';
+  if(mealPlanError&&!planPickerDate)html+='<p class="plan-message" role="alert">'+esc(mealPlanError)+'</p>';
   if(mealPlanBusy&&!mealPlanLoaded)html+='<p class="plan-message">Lade deinen Essensplan …</p>';
   if(!recipes.length)html+='<p class="plan-message">Lege zuerst unter „Rezepte“ deine Gerichte an.</p>';
   html+='<div class="plan-week-days">';
@@ -775,13 +786,31 @@ function renderMealPlan(){
     }else html+='<p class="plan-empty">Noch kein Rezept eingetragen.</p>';
     if(recipes.length){
       var names=recipes.map(function(r){return r.name}).filter(function(name,i,all){return all.indexOf(name)===i&&!assigned.some(function(x){return x.recipe_name===name})});
-      html+='<div class="plan-add"><select aria-label="Rezept für '+esc(dayTitle)+'" data-plan-select="'+iso+'"><option value="">Rezept auswählen …</option>'+names.map(function(name){return '<option value="'+esc(name)+'"'+(selected[iso]===name?' selected':'')+'>'+esc(name)+'</option>'}).join("")+'</select><button class="pillbtn" type="button" data-plan-action="add" data-date="'+iso+'"'+(mealPlanBusy?" disabled":"")+'>Hinzufügen</button></div>';
+      var isOpen=planPickerDate===iso;
+      html+='<div class="plan-add"><button class="pillbtn" type="button" data-plan-action="pick" data-date="'+iso+'" aria-label="Rezepte für '+esc(dayTitle)+' auswählen" aria-expanded="'+isOpen+'" aria-controls="plan-picker-'+iso+'">'+(isOpen?'Auswahl schließen':'+ Rezepte')+'</button></div>';
+      if(isOpen){
+        planPickerNames=planPickerNames.filter(function(name){return names.indexOf(name)>-1});
+        html+='<div class="plan-picker" id="plan-picker-'+iso+'" role="group" aria-label="Rezepte für '+esc(dayTitle)+'"><p class="hint">Wähle ein oder mehrere Rezepte.</p><input class="search" id="plan-recipe-search" type="search" placeholder="Rezepte suchen …" aria-label="Rezepte suchen" value="'+esc(planPickerQuery)+'" autocomplete="off"><ul class="plan-options">';
+        html+=names.map(function(name){return '<li data-plan-option="'+esc(name.toLocaleLowerCase('de-AT'))+'"><label><input type="checkbox" data-plan-pick="'+esc(name)+'"'+(planPickerNames.indexOf(name)>-1?' checked':'')+'><span>'+esc(name)+'</span></label></li>'}).join('');
+        html+='</ul><p class="plan-empty" id="plan-picker-empty" hidden></p><p class="plan-picker-count" id="plan-picker-count" role="status"></p>'+(mealPlanError?'<p class="recipe-error" role="alert">'+esc(mealPlanError)+'</p>':'')+'<div class="plan-picker-actions"><button class="primary" type="button" data-plan-action="save-picks" data-date="'+iso+'" disabled>Hinzufügen</button><button class="pillbtn" type="button" data-plan-action="cancel-picks">Abbrechen</button></div></div>';
+      }
     }else html+='<button class="pillbtn" type="button" data-plan-action="recipes">Rezepte öffnen</button>';
     html+='</section>';
   });
   html+='</div>';
   if(!mealPlanLoaded&&mealPlanBusy)html+='<p class="plan-message">Der Plan wird geladen …</p>';
   $("list").innerHTML=html;
+  updatePlanPicker();
+  if(restoreSearch&&$("plan-recipe-search"))$("plan-recipe-search").focus({preventScroll:true});
+}
+function updatePlanPicker(){
+  var search=$("plan-recipe-search");if(!search)return;
+  var query=planPickerQuery.trim().toLocaleLowerCase('de-AT'),visible=0,total=0;
+  Array.prototype.forEach.call($("list").querySelectorAll('[data-plan-option]'),function(row){row.hidden=row.dataset.planOption.indexOf(query)<0;total++;if(!row.hidden)visible++});
+  var empty=$("plan-picker-empty");empty.hidden=visible>0;empty.textContent=total?'Kein Rezept gefunden.':'Alle gespeicherten Rezepte sind für diesen Tag eingeplant.';
+  var count=planPickerNames.length,save=$("list").querySelector('[data-plan-action="save-picks"]');
+  $("plan-picker-count").textContent=count+' ausgewählt';
+  save.disabled=!count||mealPlanBusy;save.textContent=count?(count===1?'1 Rezept hinzufügen':count+' Rezepte hinzufügen'):'Hinzufügen';
 }
 function addRecipeIngredient(it){
   it=it||{};var unit=str(it.unit)||"Stk";
@@ -862,6 +891,7 @@ $("list").addEventListener("click",function(e){
   }
 });
 function setMealPlanWeek(offset){
+  planPickerDate="";planPickerQuery="";planPickerNames=[];
   mealPlanWeekOffset=offset;mealPlanEntries=[];mealPlanLoaded=false;mealPlanError="";render();loadMealPlan();
 }
 $("list").addEventListener("click",function(e){
@@ -870,13 +900,27 @@ $("list").addEventListener("click",function(e){
   if(action==="week"){setMealPlanWeek(mealPlanWeekOffset+Number(b.dataset.offset));return}
   if(action==="today"){setMealPlanWeek(0);return}
   if(action==="recipes"){view="recipes";savePref();render();return}
-  if(action==="add"){
-    var date=b.dataset.date,select=$("list").querySelector('[data-plan-select="'+date+'"]');
-    if(select&&select.value)changeMealPlan(date,select.value,true);
-    else note("Wähl zuerst ein Rezept aus.");
+  if(action==="pick"||action==="cancel-picks"){
+    var previousDate=planPickerDate;
+    var date=action==="pick"&&planPickerDate!==b.dataset.date?b.dataset.date:"";
+    planPickerDate=date;planPickerQuery="";planPickerNames=[];render();
+    if(date){var firstPick=$("list").querySelector('[data-plan-pick]');if(firstPick)firstPick.focus({preventScroll:true})}
+    else{var toggle=$("list").querySelector('[data-plan-action="pick"][data-date="'+previousDate+'"]');if(toggle)toggle.focus({preventScroll:true})}
+    return;
+  }
+  if(action==="save-picks"){
+    if(planPickerNames.length)changeMealPlan(b.dataset.date,planPickerNames.slice(),true);
     return;
   }
   if(action==="remove")changeMealPlan(b.dataset.date,b.dataset.recipe,false);
+});
+$("list").addEventListener("input",function(e){if(e.target.id==="plan-recipe-search"){planPickerQuery=e.target.value;updatePlanPicker()}});
+$("list").addEventListener("change",function(e){
+  if(!e.target.hasAttribute("data-plan-pick"))return;
+  var name=e.target.dataset.planPick;
+  planPickerNames=planPickerNames.filter(function(n){return n!==name});
+  if(e.target.checked)planPickerNames.push(name);
+  updatePlanPicker();
 });
 document.addEventListener("keydown",function(e){if(e.key==="Escape"&&!$("recipe-scrim").hidden)closeRecipeEditor()});
 
