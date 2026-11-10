@@ -158,6 +158,21 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .recipe-edit-row input,.recipe-edit-row select{width:100%;min-width:0;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px}
 .recipe-edit-row button{border:0;background:none;color:var(--crit);font-size:20px}
 .recipe-error{color:var(--crit);font-size:14px;margin:8px 0}
+.plan-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:16px 0}
+.plan-toolbar button{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:7px 12px}
+.plan-toolbar strong{font-family:var(--display);text-align:center}
+.plan-week-days{display:grid;gap:12px}
+.plan-day{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px}
+.plan-day h2{font-family:var(--display);font-size:19px;margin:0 0 10px}
+.plan-picks{list-style:none;margin:0;padding:0}
+.plan-picks li{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line)}
+.plan-picks li span{flex:1;min-width:0;overflow-wrap:anywhere}
+.plan-picks button{border:0;background:none;color:var(--crit);font-size:20px;padding:2px 8px}
+.plan-empty{color:var(--muted);font-size:14px;margin:0 0 10px}
+.plan-add{display:flex;gap:8px;margin-top:10px}
+.plan-add select{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px}
+.plan-add button{flex:none}
+.plan-message{color:var(--muted);font-size:14px;margin:8px 0}
 
 .hint{color:var(--muted);font-size:14px;margin:0 0 10px}
 .who{margin:0;color:var(--muted);font-size:14px;overflow-wrap:anywhere}
@@ -198,6 +213,7 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
       <button type="button" id="v-stock" aria-pressed="true">Lager</button>
       <button type="button" id="v-list" aria-pressed="false">Einkaufsliste<span class="badge" id="list-count" hidden></span></button>
       <button type="button" id="v-recipes" aria-pressed="false">Rezepte</button>
+      <button type="button" id="v-plan" aria-pressed="false">Essensplan</button>
     </div>
     <div class="tools" id="tools">
       <input class="search" id="search" type="search" placeholder="Suchen …" aria-label="Im Lager suchen" autocomplete="off">
@@ -363,13 +379,14 @@ function newId(){return "i"+Date.now().toString(36)+Math.random().toString(36).s
 var items=[];           // status "in" (Lager) und "list" (Einkaufsliste)
 var products={};        // key -> {name,unit,cat,loc,shop}
 var recipes=[],recipeSuggestions=[],recipeBusy=false,recipeError="";
+var mealPlanEntries=[],mealPlanLoaded=false,mealPlanBusy=false,mealPlanError="",mealPlanWeekOffset=0;
 var pendingQty={};      // id -> qty (noch nicht geschrieben)
 var qtyTimers={};
 var groupBy="loc", query="", closed={}, view="stock";
 var loaded=false;
 var editId=null, buy={count:0,sum:0,id:null};
 var undoStack=null, restockStack=null, toastTimer=null, sheetList=false,recipeEditId=null;
-try{var pref=JSON.parse(localStorage.getItem("vorrat.ui")||"{}");if(pref.groupBy==="cat")groupBy="cat";if(pref.view==="list"||pref.view==="recipes")view=pref.view;closed=pref.closed||{}}catch(e){}
+try{var pref=JSON.parse(localStorage.getItem("vorrat.ui")||"{}");if(pref.groupBy==="cat")groupBy="cat";if(pref.view==="list"||pref.view==="recipes"||pref.view==="plan")view=pref.view;closed=pref.closed||{}}catch(e){}
 function savePref(){try{localStorage.setItem("vorrat.ui",JSON.stringify({groupBy:groupBy,closed:closed,view:view}))}catch(e){}}
 function isLive(st){return st==="in"||st==="list"}
 function stock(){return items.filter(function(i){return i.status==="in"})}
@@ -443,6 +460,36 @@ function loadRecipes(){
     recipes=Array.isArray(r.data)?r.data:[];render();
   },function(){note("Rezepte lassen sich gerade nicht laden.")});
 }
+function localISO(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function planWeekDates(){
+  var start=new Date();start.setHours(12,0,0,0);
+  start.setDate(start.getDate()-((start.getDay()+6)%7)+mealPlanWeekOffset*7);
+  return Array.from({length:7},function(_,i){var d=new Date(start);d.setDate(start.getDate()+i);return d});
+}
+function loadMealPlan(){
+  if(!sb||!dataStarted)return;
+  var dates=planWeekDates(),first=localISO(dates[0]),last=localISO(dates[6]);
+  mealPlanBusy=true;mealPlanError="";
+  if(view==="plan")render();
+  sb.from("vorrat_mealplan").select("plan_date,recipe_name").gte("plan_date",first).lte("plan_date",last).order("plan_date").order("recipe_name").then(function(r){
+    if(r.error){mealPlanError="Der Essensplan ließ sich gerade nicht laden.";mealPlanBusy=false;mealPlanLoaded=true;if(view==="plan")render();return}
+    if(first===localISO(planWeekDates()[0]))mealPlanEntries=Array.isArray(r.data)?r.data:[];
+    mealPlanLoaded=true;mealPlanBusy=false;mealPlanError="";
+    if(view==="plan")render();
+  },function(){mealPlanError="Keine Verbindung. Bitte versuch es noch einmal.";mealPlanBusy=false;mealPlanLoaded=true;if(view==="plan")render()});
+}
+function changeMealPlan(date,name,add){
+  if(mealPlanBusy)return;
+  mealPlanBusy=true;mealPlanError="";render();
+  var q=add
+    ?sb.from("vorrat_mealplan").insert({plan_date:date,recipe_name:name})
+    :sb.from("vorrat_mealplan").delete().eq("plan_date",date).eq("recipe_name",name);
+  q.then(function(r){
+    mealPlanBusy=false;
+    if(r.error){mealPlanError="Die Änderung konnte nicht gespeichert werden.";render();return}
+    loadMealPlan();
+  },function(){mealPlanBusy=false;mealPlanError="Keine Verbindung. Bitte versuch es noch einmal.";render()});
+}
 function handleChange(p){
   if(p.eventType==="DELETE"){var oid=p.old&&p.old.id;if(oid){var k=items.findIndex(function(x){return x.id===oid});if(k>-1){items.splice(k,1);cacheSave();render()}}return}
   if(!p.new||!p.new.id)return;
@@ -452,16 +499,17 @@ function handleChange(p){
 }
 function startData(){
   if(dataStarted)return;dataStarted=true;
-  refetch();loadProducts();loadRecipes();
+  refetch();loadProducts();loadRecipes();loadMealPlan();
   channel=sb.channel("vorrat-items").on("postgres_changes",{event:"*",schema:"public",table:"vorrat_items"},handleChange)
-    .on("postgres_changes",{event:"*",schema:"public",table:"vorrat_recipes"},loadRecipes).subscribe(function(status){
+    .on("postgres_changes",{event:"*",schema:"public",table:"vorrat_recipes"},loadRecipes)
+    .on("postgres_changes",{event:"*",schema:"public",table:"vorrat_mealplan"},loadMealPlan).subscribe(function(status){
     if(status==="SUBSCRIBED"){if(subscribedOnce)refetch();subscribedOnce=true}
   });
 }
 function stopData(){
   dataStarted=false;subscribedOnce=false;
   if(channel&&sb){try{sb.removeChannel(channel)}catch(e){}}channel=null;
-  items=[];products={};recipes=[];recipeSuggestions=[];pendingQty={};loaded=false;render();
+  items=[];products={};recipes=[];recipeSuggestions=[];mealPlanEntries=[];mealPlanLoaded=false;mealPlanBusy=false;pendingQty={};loaded=false;render();
 }
 document.addEventListener("visibilitychange",function(){if(!document.hidden&&dataStarted)refetch()});
 
@@ -573,26 +621,29 @@ function render(){
   var inStock=stock(),onList=shopping();
   var soon=inStock.filter(function(i){var d=daysUntil(str(i.mhd));return d!=null&&d<=3}).length;
   var worth=inStock.reduce(function(s,i){return s+(num(i.price)||0)},0);
-  var st=$("stats"),isList=view==="list",isRecipes=view==="recipes";
+  var st=$("stats"),isList=view==="list",isRecipes=view==="recipes",isPlan=view==="plan";
   if(!loaded){st.textContent="Lade Bestand …"}
   else if(isList){st.innerHTML="<b>"+onList.length+"</b> "+(onList.length===1?"Artikel":"Artikel")+" auf der Einkaufsliste"}
   else if(isRecipes){st.innerHTML="<b>"+recipes.length+"</b> gespeicherte "+(recipes.length===1?"Rezept":"Rezepte")}
+  else if(isPlan){st.textContent="Woche für Woche gemeinsam planen"}
   else{
     st.innerHTML="<b>"+inStock.length+"</b> Artikel im Lager"+(soon?' · <span class="soon">'+soon+" "+(soon===1?"läuft":"laufen")+" bald ab</span>":"")+(worth?" · Einkaufswert <b>"+esc(fmtEur(worth))+"</b>":"");
   }
-  $("v-stock").setAttribute("aria-pressed",!isList&&!isRecipes);
+  $("v-stock").setAttribute("aria-pressed",!isList&&!isRecipes&&!isPlan);
   $("v-list").setAttribute("aria-pressed",isList);
   $("v-recipes").setAttribute("aria-pressed",isRecipes);
-  var lc=$("list-count");lc.hidden=!(loaded&&onList.length&&!isList&&!isRecipes);lc.textContent=onList.length;
-  $("tools").hidden=isList||isRecipes;
-  $("clear-all").hidden=isRecipes;$("fab").hidden=isRecipes;
+  $("v-plan").setAttribute("aria-pressed",isPlan);
+  var lc=$("list-count");lc.hidden=!(loaded&&onList.length&&!isList&&!isRecipes&&!isPlan);lc.textContent=onList.length;
+  $("tools").hidden=isList||isRecipes||isPlan;
+  $("clear-all").hidden=isRecipes||isPlan;$("fab").hidden=isRecipes||isPlan;
   $("clear-all").textContent=isList?"Liste leeren":"Lager leeren";
   $("fab").lastChild.textContent=isList?"Auf die Liste":"Einkauf eintragen";
-  $("clear-all").disabled=isRecipes||!cur().length;
+  $("clear-all").disabled=isRecipes||isPlan||!cur().length;
   $("by-loc").setAttribute("aria-pressed",groupBy==="loc");
   $("by-cat").setAttribute("aria-pressed",groupBy==="cat");
   if(!loaded){list.innerHTML="";return}
   if(isRecipes){renderRecipes();return}
+  if(isPlan){renderMealPlan();return}
   if(isList){renderList(onList);return}
   if(!inStock.length){
     list.innerHTML='<div class="blank"><h2>Das Lager ist leer</h2><p>Trag deinen ersten Einkauf ein. Jeder Artikel landet automatisch hier, sortiert nach Lagerort.</p></div>';
@@ -690,6 +741,31 @@ function renderRecipes(){
   recipeSuggestions.forEach(function(r,n){html+=renderRecipeCard(r,"suggested",n)});
   $("list").innerHTML=html;
 }
+function renderMealPlan(){
+  var dates=planWeekDates(),start=localISO(dates[0]),end=localISO(dates[6]);
+  var dateFmt=new Intl.DateTimeFormat("de-AT",{day:"numeric",month:"short"});
+  var weekLabel=dateFmt.format(dates[0])+" – "+dateFmt.format(dates[6])+" "+dates[6].getFullYear();
+  var html='<div class="plan-toolbar"><button type="button" data-plan-action="week" data-offset="-1" aria-label="Vorige Woche">‹</button><strong>'+esc(weekLabel)+'</strong><button type="button" data-plan-action="week" data-offset="1" aria-label="Nächste Woche">›</button><button type="button" data-plan-action="today">Heute</button></div>';
+  if(mealPlanError)html+='<p class="plan-message" role="alert">'+esc(mealPlanError)+'</p>';
+  if(mealPlanBusy&&!mealPlanLoaded)html+='<p class="plan-message">Lade deinen Essensplan …</p>';
+  if(!recipes.length)html+='<p class="plan-message">Lege zuerst unter „Rezepte“ deine Gerichte an.</p>';
+  html+='<div class="plan-week-days">';
+  dates.forEach(function(d){
+    var iso=localISO(d),assigned=mealPlanEntries.filter(function(x){return x.plan_date===iso});
+    var dayTitle=new Intl.DateTimeFormat("de-AT",{weekday:"long",day:"numeric",month:"long"}).format(d);
+    html+='<section class="plan-day"><h2>'+esc(dayTitle)+'</h2>';
+    if(assigned.length){
+      html+='<ul class="plan-picks">'+assigned.map(function(x){return '<li><span>'+esc(x.recipe_name)+'</span><button type="button" data-plan-action="remove" data-date="'+iso+'" data-recipe="'+esc(x.recipe_name)+'" aria-label="'+esc(x.recipe_name)+' entfernen"'+(mealPlanBusy?" disabled":"")+'>×</button></li>'}).join("")+'</ul>';
+    }else html+='<p class="plan-empty">Noch kein Rezept eingetragen.</p>';
+    if(recipes.length){
+      html+='<div class="plan-add"><select aria-label="Rezept für '+esc(dayTitle)+'" data-plan-select="'+iso+'"><option value="">Rezept auswählen …</option>'+recipes.map(function(r){return '<option value="'+esc(r.name)+'">'+esc(r.name)+'</option>'}).join("")+'</select><button class="pillbtn" type="button" data-plan-action="add" data-date="'+iso+'"'+(mealPlanBusy?" disabled":"")+'>Hinzufügen</button></div>';
+    }else html+='<button class="pillbtn" type="button" data-plan-action="recipes">Rezepte öffnen</button>';
+    html+='</section>';
+  });
+  html+='</div>';
+  if(!mealPlanLoaded&&mealPlanBusy)html+='<p class="plan-message">Der Plan wird geladen …</p>';
+  $("list").innerHTML=html;
+}
 function addRecipeIngredient(it){
   it=it||{};var unit=str(it.unit)||"Stk";
   var options=RECIPE_UNITS.map(function(u){return '<option value="'+esc(u)+'"'+(u===unit?" selected":"")+'>'+esc(u)+"</option>"}).join("");
@@ -768,6 +844,23 @@ $("list").addEventListener("click",function(e){
     addRecipeItemsToList(selected);
   }
 });
+function setMealPlanWeek(offset){
+  mealPlanWeekOffset=offset;mealPlanEntries=[];mealPlanLoaded=false;mealPlanError="";render();loadMealPlan();
+}
+$("list").addEventListener("click",function(e){
+  var b=e.target.closest("[data-plan-action]");if(!b)return;
+  var action=b.dataset.planAction;
+  if(action==="week"){setMealPlanWeek(mealPlanWeekOffset+Number(b.dataset.offset));return}
+  if(action==="today"){setMealPlanWeek(0);return}
+  if(action==="recipes"){view="recipes";savePref();render();return}
+  if(action==="add"){
+    var date=b.dataset.date,select=$("list").querySelector('[data-plan-select="'+date+'"]');
+    if(select&&select.value)changeMealPlan(date,select.value,true);
+    else note("Wähl zuerst ein Rezept aus.");
+    return;
+  }
+  if(action==="remove")changeMealPlan(b.dataset.date,b.dataset.recipe,false);
+});
 document.addEventListener("keydown",function(e){if(e.key==="Escape"&&!$("recipe-scrim").hidden)closeRecipeEditor()});
 
 function markBought(it){
@@ -840,6 +933,7 @@ $("clear-all").addEventListener("click",function(){var l=cur().slice(),n=l.lengt
 $("v-stock").addEventListener("click",function(){view="stock";savePref();render()});
 $("v-list").addEventListener("click",function(){view="list";savePref();render()});
 $("v-recipes").addEventListener("click",function(){view="recipes";savePref();render()});
+$("v-plan").addEventListener("click",function(){view="plan";savePref();render();if(!mealPlanLoaded)loadMealPlan()});
 $("undo").addEventListener("click",undo);
 $("restock").addEventListener("click",restockConsumed);
 $("search").addEventListener("input",function(e){query=e.target.value;render()});
