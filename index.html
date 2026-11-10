@@ -243,6 +243,9 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
       <button class="x" id="hh-close" type="button">Schließen</button>
     </div>
     <p class="who" id="hh-who"></p>
+    <h3>Name des Haushalts</h3>
+    <div class="f"><input id="hh-name" type="text" maxlength="60" aria-label="Name des Haushalts"></div>
+    <button class="primary" id="hh-rename" type="button">Namen speichern</button>
     <h3>Mitglieder</h3>
     <ul class="members" id="hh-members"></ul>
     <h3>Person einladen</h3>
@@ -253,6 +256,7 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     <p class="hint">Android: In Chrome das Menü ⋮ öffnen und „App installieren" wählen. Danach liegt Vorrat auf dem Startbildschirm.</p>
     <div class="stack">
       <button class="primary" id="install" type="button" hidden>Jetzt installieren</button>
+      <button class="danger" id="hh-leave" type="button">Haushalt verlassen</button>
       <button class="danger" id="hh-logout" type="button">Abmelden</button>
     </div>
   </div>
@@ -279,8 +283,11 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
         <div class="f"><label for="j-code">Einladungscode</label><input id="j-code" type="text" autocomplete="off" autocapitalize="none" spellcheck="false"></div>
         <p class="err" id="j-err" role="alert"></p>
         <button class="primary" id="j-submit" type="submit">Beitreten</button>
-        <button class="linkbtn" id="j-logout" type="button">Mit anderem Konto anmelden</button>
       </form>
+      <p class="hint" style="margin:18px 0 8px">Noch keinen Code? Lege einen eigenen Haushalt an – du kannst danach andere einladen.</p>
+      <div class="f"><label for="n-name">Name des neuen Haushalts</label><input id="n-name" type="text" maxlength="60" placeholder="z. B. Familie Müller"></div>
+      <button class="primary" id="n-submit" type="button">Neuen Haushalt anlegen</button>
+      <button class="linkbtn" id="j-logout" type="button">Mit anderem Konto anmelden</button>
     </div>
   </div>
 </div>
@@ -366,7 +373,7 @@ var store={
     cacheSave();render();
     return sb.from("vorrat_items").upsert(rows).then(done,failed);
   },
-  product:function(key,data){products[key]=data;cacheSave();return sb.from("vorrat_products").upsert({key:key,name:data.name,unit:data.unit,cat:data.cat,loc:data.loc,shop:data.shop,updated_at:new Date().toISOString()}).then(done,failed)}
+  product:function(key,data){products[key]=data;cacheSave();return sb.from("vorrat_products").upsert({key:key,name:data.name,unit:data.unit,cat:data.cat,loc:data.loc,shop:data.shop,updated_at:new Date().toISOString()},{onConflict:"household_id,key"}).then(done,failed)}
 };
 
 function refetch(){
@@ -472,6 +479,14 @@ function initAuth(){
       if(r.data===true){$("j-code").value="";checkedFor=null;checkMember()}
       else setErr("j-err","Dieser Code ist ungültig, schon benutzt oder abgelaufen.");
     },function(){$("j-submit").disabled=false;setErr("j-err","Keine Verbindung. Bitte versuch es noch einmal.")});
+  });
+  $("n-submit").addEventListener("click",function(){
+    setErr("j-err","");$("n-submit").disabled=true;
+    sb.rpc("vorrat_create_household",{p_name:$("n-name").value.trim()}).then(function(r){
+      $("n-submit").disabled=false;
+      if(r.error||r.data!==true){setErr("j-err",r.error?authError(r.error):"Das hat nicht geklappt.");return}
+      $("n-name").value="";checkedFor=null;checkMember();
+    },function(){$("n-submit").disabled=false;setErr("j-err","Keine Verbindung. Bitte versuch es noch einmal.")});
   });
   $("j-logout").addEventListener("click",function(){sb.auth.signOut()});
   sb.auth.onAuthStateChange(function(evt,s){
@@ -797,12 +812,23 @@ function openHousehold(){
   $("hh-who").textContent="Angemeldet als "+userEmail;
   $("hh-code").hidden=true;$("hh-members").innerHTML="";
   $("scrim2").hidden=false;
+  sb.from("vorrat_households").select("name").limit(1).then(function(r){if(r.data&&r.data[0])$("hh-name").value=r.data[0].name},function(){});
   sb.from("vorrat_members").select("email,joined_at").order("joined_at").then(function(r){
     if(r.error||!r.data)return;
     $("hh-members").innerHTML=r.data.map(function(m){return "<li>"+esc(m.email||"Unbekannt")+"</li>"}).join("");
   },function(){});
 }
 $("hh-open").addEventListener("click",openHousehold);
+$("hh-rename").addEventListener("click",function(){
+  sb.rpc("vorrat_rename_household",{p_name:$("hh-name").value}).then(function(r){note(r.data===true?"Name gespeichert.":"Das hat nicht geklappt.")},function(){note("Keine Verbindung.")});
+});
+$("hh-leave").addEventListener("click",function(){
+  if(!confirm("Haushalt wirklich verlassen? Wenn du die letzte Person bist, werden alle Daten des Haushalts gelöscht."))return;
+  sb.rpc("vorrat_leave_household").then(function(r){
+    if(r.data!==true){note("Das hat nicht geklappt.");return}
+    closeHousehold();stopData();cacheClear();items=[];checkedFor=null;checkMember();
+  },function(){note("Keine Verbindung.")});
+});
 $("hh-close").addEventListener("click",closeHousehold);
 $("scrim2").addEventListener("click",function(e){if(e.target===$("scrim2"))closeHousehold()});
 $("hh-invite").addEventListener("click",function(){
