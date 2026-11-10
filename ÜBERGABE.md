@@ -10,7 +10,7 @@ Gemeinsames Gedächtnis für alle, die an der App arbeiten (Simon, Claude, ChatG
 - Foto-Scan über Edge Function `scan-receipt` mit Gemini (Modell gemini-3.5-flash-lite)
 - Eigene Rezepte in `vorrat_recipes`, pro Haushalt mit RLS und Realtime
 - Gemini-Modi für Rezeptideen und MHD-Erkennung zusätzlich zum Foto-Scan
-- `supabase/functions/scan-receipt/index.ts` entspricht deployter Version 11; Verify JWT ist aktiv
+- `supabase/functions/scan-receipt/index.ts` entspricht deployter Version 12; Verify JWT ist aktiv; Bon-/Einkaufszettel-Flow wie Version 10
 
 ## Datenbank
 Tabellen: vorrat_households, vorrat_members (mehrere Zeilen pro Konto möglich), vorrat_active, vorrat_invites, vorrat_items, vorrat_products (PK household_id + key), vorrat_recipes. Rezepte und Vorratstabellen mit RLS: sichtbar nur, wenn household_id = vorrat_my_household(). `vorrat_recipes` und `vorrat_items` sind in `supabase_realtime`.
@@ -30,4 +30,4 @@ Item-Status: "in" Lager, "list" Einkaufsliste, "used"/"gone" entnommen bzw. übe
 ## Verlauf
 - 2026-11-10 (Claude): Mehrere Haushalte pro Konto (Datenbank-Migration + Umschalter), Cache v6, bestehende Daten in Haushalt "Unser Haushalt" übernommen
 - 2026-11-10 (ChatGPT): Deployte `scan-receipt`-Edge-Function Version 10 unverändert unter `supabase/functions/scan-receipt/index.ts` abgelegt; Übergabe aktualisiert, veralteten offenen Punkt entfernt
-- 2026-11-10 (ChatGPT): KI-Rezeptideen, eigene Rezepte mit wählbaren Zutaten, Verbrauchte Artikel auf die Einkaufsliste setzen und MHD-Fotoerkennung ergänzt; Tabelle `vorrat_recipes` mit RLS/Realtime; Edge Function Version 11; Cache v7
+- 2026-11-10 (ChatGPT): KI-Rezeptideen, eigene Rezepte mit wählbaren Zutaten, Verbrauchte Artikel auf die Einkaufsliste setzen und MHD-Fotoerkennung ergänzt; Tabelle `vorrat_recipes` mit RLS/Realtime; Edge Function Version 12 mit unverändertem Bon-/Einkaufszettel-Flow; Cache v7
