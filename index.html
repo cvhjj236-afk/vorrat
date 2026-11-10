@@ -39,7 +39,7 @@
 *{box-sizing:border-box}
 html,body{margin:0}
 body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.4;-webkit-text-size-adjust:100%}
-button,input,select{font:inherit;color:inherit}
+button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .wrap{max-width:680px;margin:0 auto;padding:0 16px 120px}
@@ -136,6 +136,28 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .danger[hidden]{display:none}
 .session{grid-column:1/-1;font-size:14px;color:var(--muted);margin:2px 0 0;font-variant-numeric:tabular-nums}
 .session:empty{display:none}
+.date-line{display:flex;gap:6px;align-items:center}
+.date-line input{flex:1;min-width:0}
+.date-line button{flex:none}
+.f textarea{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;resize:vertical}
+.field-hint{font-size:12px;color:var(--muted);margin:0}
+.recipe-tools{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}
+.recipe-tools .primary{width:auto}
+.recipe-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin:12px 0}
+.recipe-card h2{font-family:var(--display);font-size:21px;margin:0 0 4px}
+.recipe-card p{margin:6px 0;color:var(--muted);font-size:14px}
+.recipe-card .recipe-meta{font-size:13px;color:var(--muted)}
+.recipe-ingredients{list-style:none;margin:10px 0;padding:0}
+.recipe-ingredients li{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+.recipe-ingredients label{display:flex;gap:8px;align-items:center;width:100%}
+.recipe-ingredients input{width:19px;height:19px;accent-color:var(--accent);flex:none}
+.recipe-ingredients .ingredient-text{flex:1;min-width:0}
+.ingredient-stock{font-size:12px;color:var(--muted);white-space:nowrap}
+.recipe-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.recipe-edit-row{display:grid;grid-template-columns:minmax(0,1fr) 60px 82px 34px;gap:6px;align-items:center;margin:8px 0}
+.recipe-edit-row input,.recipe-edit-row select{width:100%;min-width:0;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px}
+.recipe-edit-row button{border:0;background:none;color:var(--crit);font-size:20px}
+.recipe-error{color:var(--crit);font-size:14px;margin:8px 0}
 
 .hint{color:var(--muted);font-size:14px;margin:0 0 10px}
 .who{margin:0;color:var(--muted);font-size:14px;overflow-wrap:anywhere}
@@ -167,7 +189,7 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
         <p class="stats" id="stats">Lade Bestand …</p>
       </div>
       <div class="btns">
-        <button class="pillbtn" id="scan" type="button">Foto</button>
+      <button class="pillbtn" id="scan" type="button">Foto</button>
         <button class="pillbtn" id="hh-open" type="button">Haushalt</button>
         <button class="clear-all" id="clear-all" type="button" disabled>Lager leeren</button>
       </div>
@@ -175,6 +197,7 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     <div class="seg views" id="views" role="group" aria-label="Ansicht">
       <button type="button" id="v-stock" aria-pressed="true">Lager</button>
       <button type="button" id="v-list" aria-pressed="false">Einkaufsliste<span class="badge" id="list-count" hidden></span></button>
+      <button type="button" id="v-recipes" aria-pressed="false">Rezepte</button>
     </div>
     <div class="tools" id="tools">
       <input class="search" id="search" type="search" placeholder="Suchen …" aria-label="Im Lager suchen" autocomplete="off">
@@ -192,6 +215,7 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 
 <div class="toast" id="toast" role="status" hidden>
   <span id="toast-text"></span>
+  <button type="button" id="restock" hidden>Auf die Einkaufsliste</button>
   <button type="button" id="undo">Rückgängig</button>
 </div>
 
@@ -208,7 +232,7 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
       <div class="f"><label for="f-unit">Einheit</label><select id="f-unit"></select></div>
       <div class="f"><label for="f-loc">Lagerort</label><select id="f-loc"></select></div>
       <div class="f"><label for="f-cat">Kategorie</label><select id="f-cat"></select></div>
-      <div class="f"><label for="f-mhd">Haltbar bis</label><input id="f-mhd" type="date"></div>
+      <div class="f"><label for="f-mhd">Haltbar bis</label><div class="date-line"><input id="f-mhd" type="date"><button class="pillbtn" id="scan-mhd" type="button" aria-label="Haltbarkeitsdatum fotografieren">📷 MHD</button></div><p class="field-hint" id="mhd-msg"></p></div>
       <div class="f"><label for="f-price">Preis gesamt (€)</label><input id="f-price" type="text" inputmode="decimal" placeholder="optional"></div>
       <div class="f wide"><label for="f-shop">Geschäft</label><input id="f-shop" type="text" list="shops" placeholder="optional, bleibt für den ganzen Einkauf"><datalist id="shops"></datalist></div>
       <div class="actions">
@@ -221,6 +245,7 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 </div>
 
 <input type="file" id="scan-file" accept="image/*" hidden>
+<input type="file" id="mhd-file" accept="image/*" capture="environment" hidden>
 <div class="scrim" id="scrim3" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sc-title">
     <div class="sheet-head">
@@ -234,6 +259,18 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
       <ul class="scanrows" id="sc-rows"></ul>
       <div class="actions"><button class="primary" id="sc-ok" type="button">Übernehmen</button></div>
     </div>
+  </div>
+</div>
+<div class="scrim" id="recipe-scrim" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="recipe-editor-title">
+    <div class="sheet-head"><h2 id="recipe-editor-title">Rezept anlegen</h2><button class="x" id="recipe-cancel" type="button">Abbrechen</button></div>
+    <form id="recipe-form" autocomplete="off" novalidate>
+      <div class="f wide"><label for="recipe-name">Rezeptname</label><input id="recipe-name" maxlength="120" required placeholder="z. B. Gemüsepfanne"></div>
+      <div class="f wide"><label>Zutaten</label><div id="recipe-ingredient-editor"></div><button class="pillbtn" id="recipe-add-ingredient" type="button">Zutat hinzufügen</button></div>
+      <div class="f wide"><label for="recipe-instructions">Zubereitung (optional)</label><textarea id="recipe-instructions" rows="5" placeholder="Schritte oder Notizen"></textarea></div>
+      <p class="recipe-error wide" id="recipe-error" role="alert"></p>
+      <div class="actions"><button class="primary" id="recipe-save" type="submit">Rezept speichern</button></div>
+    </form>
   </div>
 </div>
 <div class="scrim" id="scrim2" hidden>
@@ -325,13 +362,14 @@ function newId(){return "i"+Date.now().toString(36)+Math.random().toString(36).s
 /* ---------- state ---------- */
 var items=[];           // status "in" (Lager) und "list" (Einkaufsliste)
 var products={};        // key -> {name,unit,cat,loc,shop}
+var recipes=[],recipeSuggestions=[],recipeBusy=false,recipeError="";
 var pendingQty={};      // id -> qty (noch nicht geschrieben)
 var qtyTimers={};
 var groupBy="loc", query="", closed={}, view="stock";
 var loaded=false;
 var editId=null, buy={count:0,sum:0,id:null};
-var undoStack=null, toastTimer=null, sheetList=false;
-try{var pref=JSON.parse(localStorage.getItem("vorrat.ui")||"{}");if(pref.groupBy==="cat")groupBy="cat";if(pref.view==="list")view="list";closed=pref.closed||{}}catch(e){}
+var undoStack=null, restockStack=null, toastTimer=null, sheetList=false,recipeEditId=null;
+try{var pref=JSON.parse(localStorage.getItem("vorrat.ui")||"{}");if(pref.groupBy==="cat")groupBy="cat";if(pref.view==="list"||pref.view==="recipes")view=pref.view;closed=pref.closed||{}}catch(e){}
 function savePref(){try{localStorage.setItem("vorrat.ui",JSON.stringify({groupBy:groupBy,closed:closed,view:view}))}catch(e){}}
 function isLive(st){return st==="in"||st==="list"}
 function stock(){return items.filter(function(i){return i.status==="in"})}
@@ -379,6 +417,10 @@ var store={
     cacheSave();render();
     return sb.from("vorrat_items").upsert(rows).then(done,failed);
   },
+  restoreToList:function(item,patch){
+    applyLocal(item.id,patch,item,true);cacheSave();render();
+    return sb.from("vorrat_items").update(toRow(patch)).eq("id",item.id).then(done,failed);
+  },
   product:function(key,data){products[key]=data;cacheSave();return sb.from("vorrat_products").upsert({key:key,name:data.name,unit:data.unit,cat:data.cat,loc:data.loc,shop:data.shop,updated_at:new Date().toISOString()},{onConflict:"household_id,key"}).then(done,failed)}
 };
 
@@ -394,6 +436,13 @@ function loadProducts(){
     if(r.error)return;var p={};r.data.forEach(function(x){p[x.key]={name:x.name,unit:x.unit,cat:x.cat,loc:x.loc,shop:x.shop}});products=p;cacheSave();
   },function(){});
 }
+function loadRecipes(){
+  if(!sb||!dataStarted)return;
+  sb.from("vorrat_recipes").select("id,name,ingredients,instructions,updated_at").order("name").limit(500).then(function(r){
+    if(r.error){note("Rezepte lassen sich gerade nicht laden.");return}
+    recipes=Array.isArray(r.data)?r.data:[];render();
+  },function(){note("Rezepte lassen sich gerade nicht laden.")});
+}
 function handleChange(p){
   if(p.eventType==="DELETE"){var oid=p.old&&p.old.id;if(oid){var k=items.findIndex(function(x){return x.id===oid});if(k>-1){items.splice(k,1);cacheSave();render()}}return}
   if(!p.new||!p.new.id)return;
@@ -403,15 +452,16 @@ function handleChange(p){
 }
 function startData(){
   if(dataStarted)return;dataStarted=true;
-  refetch();loadProducts();
-  channel=sb.channel("vorrat-items").on("postgres_changes",{event:"*",schema:"public",table:"vorrat_items"},handleChange).subscribe(function(status){
+  refetch();loadProducts();loadRecipes();
+  channel=sb.channel("vorrat-items").on("postgres_changes",{event:"*",schema:"public",table:"vorrat_items"},handleChange)
+    .on("postgres_changes",{event:"*",schema:"public",table:"vorrat_recipes"},loadRecipes).subscribe(function(status){
     if(status==="SUBSCRIBED"){if(subscribedOnce)refetch();subscribedOnce=true}
   });
 }
 function stopData(){
   dataStarted=false;subscribedOnce=false;
   if(channel&&sb){try{sb.removeChannel(channel)}catch(e){}}channel=null;
-  items=[];products={};pendingQty={};loaded=false;render();
+  items=[];products={};recipes=[];recipeSuggestions=[];pendingQty={};loaded=false;render();
 }
 document.addEventListener("visibilitychange",function(){if(!document.hidden&&dataStarted)refetch()});
 
@@ -523,22 +573,26 @@ function render(){
   var inStock=stock(),onList=shopping();
   var soon=inStock.filter(function(i){var d=daysUntil(str(i.mhd));return d!=null&&d<=3}).length;
   var worth=inStock.reduce(function(s,i){return s+(num(i.price)||0)},0);
-  var st=$("stats"),isList=view==="list";
+  var st=$("stats"),isList=view==="list",isRecipes=view==="recipes";
   if(!loaded){st.textContent="Lade Bestand …"}
   else if(isList){st.innerHTML="<b>"+onList.length+"</b> "+(onList.length===1?"Artikel":"Artikel")+" auf der Einkaufsliste"}
+  else if(isRecipes){st.innerHTML="<b>"+recipes.length+"</b> gespeicherte "+(recipes.length===1?"Rezept":"Rezepte")}
   else{
     st.innerHTML="<b>"+inStock.length+"</b> Artikel im Lager"+(soon?' · <span class="soon">'+soon+" "+(soon===1?"läuft":"laufen")+" bald ab</span>":"")+(worth?" · Einkaufswert <b>"+esc(fmtEur(worth))+"</b>":"");
   }
-  $("v-stock").setAttribute("aria-pressed",!isList);
+  $("v-stock").setAttribute("aria-pressed",!isList&&!isRecipes);
   $("v-list").setAttribute("aria-pressed",isList);
-  var lc=$("list-count");lc.hidden=!(loaded&&onList.length&&!isList);lc.textContent=onList.length;
-  $("tools").hidden=isList;
+  $("v-recipes").setAttribute("aria-pressed",isRecipes);
+  var lc=$("list-count");lc.hidden=!(loaded&&onList.length&&!isList&&!isRecipes);lc.textContent=onList.length;
+  $("tools").hidden=isList||isRecipes;
+  $("clear-all").hidden=isRecipes;$("fab").hidden=isRecipes;
   $("clear-all").textContent=isList?"Liste leeren":"Lager leeren";
   $("fab").lastChild.textContent=isList?"Auf die Liste":"Einkauf eintragen";
-  $("clear-all").disabled=!cur().length;
+  $("clear-all").disabled=isRecipes||!cur().length;
   $("by-loc").setAttribute("aria-pressed",groupBy==="loc");
   $("by-cat").setAttribute("aria-pressed",groupBy==="cat");
   if(!loaded){list.innerHTML="";return}
+  if(isRecipes){renderRecipes();return}
   if(isList){renderList(onList);return}
   if(!inStock.length){
     list.innerHTML='<div class="blank"><h2>Das Lager ist leer</h2><p>Trag deinen ersten Einkauf ein. Jeder Artikel landet automatisch hier, sortiert nach Lagerort.</p></div>';
@@ -602,6 +656,120 @@ function renderList(rows){
   });
   list.innerHTML=html;
 }
+
+/* ---------- Rezepte ---------- */
+var RECIPE_UNITS=UNITS.concat(["EL","TL","Prise","Bund"]);
+function normRecipeName(s){return str(s).toLowerCase().replace(/ä/g,"a").replace(/ö/g,"o").replace(/ü/g,"u").replace(/ß/g,"ss").replace(/[^a-z0-9]+/g," ").trim()}
+function isInStock(name){var q=normRecipeName(name);return !!q&&stock().some(function(it){return normRecipeName(it.name)===q})}
+function recipeIngredientHtml(list){
+  return '<ul class="recipe-ingredients">'+(Array.isArray(list)?list:[]).map(function(it,n){
+    var name=str(it.name),qty=num(it.qty),unit=str(it.unit)||"Stk",present=isInStock(name);
+    return '<li><label><input type="checkbox" data-ri="'+n+'"'+(present?"":" checked")+'><span class="ingredient-text">'+esc(name)+(qty!=null?' · '+esc(fmtNum(qty))+" "+esc(unit):"")+'</span><span class="ingredient-stock">'+(present?"im Lager":"fehlt")+'</span></label></li>';
+  }).join("")+'</ul>';
+}
+function renderRecipeCard(r,kind,n){
+  var ingredients=Array.isArray(r.ingredients)?r.ingredients:[],meta=[];
+  if(r.minutes)meta.push(esc(r.minutes)+" Min.");if(r.servings)meta.push(esc(r.servings)+" Portionen");
+  var instructions=Array.isArray(r.steps)?r.steps.join("\n"):str(r.instructions);
+  var id=kind==="saved"?esc(r.id):String(n);
+  var buttons='<button class="pillbtn" type="button" data-recipe-act="add">Auswahl auf Einkaufsliste</button>';
+  if(kind==="saved")buttons+='<button class="pillbtn" type="button" data-recipe-act="edit">Bearbeiten</button>';
+  else buttons+='<button class="pillbtn" type="button" data-recipe-act="save">Rezept speichern</button>';
+  return '<article class="recipe-card" data-recipe-kind="'+kind+'" data-recipe-id="'+id+'">'+
+    '<h2>'+esc(r.name||"Rezept")+'</h2>'+(r.description?'<p>'+esc(r.description)+'</p>':'')+
+    (meta.length?'<p class="recipe-meta">'+meta.join(" · ")+'</p>':'')+
+    recipeIngredientHtml(ingredients)+
+    (instructions?'<p>'+esc(instructions).replace(/\n/g,"<br>")+'</p>':'')+
+    '<div class="recipe-actions">'+buttons+'</div></article>';
+}
+function renderRecipes(){
+  var html='<div class="recipe-tools"><button class="primary" type="button" data-recipe-act="suggest"'+(recipeBusy?" disabled":"")+'>'+(recipeBusy?"Ideen werden gesucht …":"KI-Rezeptideen")+'</button><button class="pillbtn" type="button" data-recipe-act="new">Eigenes Rezept einfügen</button></div>';
+  if(recipeError)html+='<p class="recipe-error" role="alert">'+esc(recipeError)+'</p>';
+  if(!recipes.length&&!recipeSuggestions.length&&!recipeBusy)html+='<div class="blank"><h2>Noch keine Rezepte</h2><p>Speichere ein eigenes Rezept oder lass dir Ideen aus deinem Vorrat vorschlagen.</p></div>';
+  recipes.forEach(function(r){html+=renderRecipeCard(r,"saved")});
+  recipeSuggestions.forEach(function(r,n){html+=renderRecipeCard(r,"suggested",n)});
+  $("list").innerHTML=html;
+}
+function addRecipeIngredient(it){
+  it=it||{};var unit=str(it.unit)||"Stk";
+  var options=RECIPE_UNITS.map(function(u){return '<option value="'+esc(u)+'"'+(u===unit?" selected":"")+'>'+esc(u)+"</option>"}).join("");
+  if(RECIPE_UNITS.indexOf(unit)<0)options+='<option value="'+esc(unit)+'" selected>'+esc(unit)+"</option>";
+  var row=document.createElement("div");row.className="recipe-edit-row";
+  row.innerHTML='<input class="ri-name" type="text" maxlength="80" placeholder="Zutat" value="'+esc(it.name||"")+'"><input class="ri-qty" type="text" inputmode="decimal" value="'+(num(it.qty)!=null?esc(fmtNum(it.qty)):"1")+'" aria-label="Menge"><select class="ri-unit" aria-label="Einheit">'+options+'</select><button type="button" data-ri-remove aria-label="Zutat entfernen">×</button>';
+  $("recipe-ingredient-editor").appendChild(row);
+}
+function openRecipeEditor(r){
+  recipeEditId=r?r.id:null;$("recipe-editor-title").textContent=r?"Rezept bearbeiten":"Rezept anlegen";
+  $("recipe-save").textContent=r?"Änderungen speichern":"Rezept speichern";
+  $("recipe-name").value=r?str(r.name):"";$("recipe-instructions").value=r?str(r.instructions):"";$("recipe-error").textContent="";
+  $("recipe-ingredient-editor").innerHTML="";
+  (r&&Array.isArray(r.ingredients)&&r.ingredients.length?r.ingredients:[{}]).forEach(addRecipeIngredient);
+  $("recipe-scrim").hidden=false;$("recipe-name").focus();
+}
+function closeRecipeEditor(){$("recipe-scrim").hidden=true;recipeEditId=null;$("recipe-name").blur()}
+function readRecipeForm(){
+  var ingredients=[];Array.prototype.forEach.call($("recipe-ingredient-editor").querySelectorAll(".recipe-edit-row"),function(row){
+    var name=row.querySelector(".ri-name").value.trim();if(!name)return;
+    var qty=parseNum(row.querySelector(".ri-qty").value);ingredients.push({name:name.slice(0,80),qty:qty!=null&&qty>0?qty:1,unit:row.querySelector(".ri-unit").value});
+  });
+  return {name:$("recipe-name").value.trim().slice(0,120),ingredients:ingredients,instructions:$("recipe-instructions").value.trim().slice(0,4000)};
+}
+function persistRecipe(r){
+  if(!r.name){$("recipe-error").textContent="Gib dem Rezept einen Namen.";return}
+  if(!r.ingredients.length){$("recipe-error").textContent="Füge mindestens eine Zutat hinzu.";return}
+  var q=recipeEditId?sb.from("vorrat_recipes").update({name:r.name,ingredients:r.ingredients,instructions:r.instructions,updated_at:new Date().toISOString()}).eq("id",recipeEditId):sb.from("vorrat_recipes").insert(r);
+  $("recipe-save").disabled=true;
+  q.then(function(res){$("recipe-save").disabled=false;if(res.error){$("recipe-error").textContent="Das Rezept konnte nicht gespeichert werden.";return}closeRecipeEditor();loadRecipes()},function(){$("recipe-save").disabled=false;$("recipe-error").textContent="Keine Verbindung. Bitte versuch es noch einmal."});
+}
+function saveSuggestedRecipe(r){persistRecipe({name:str(r.name).slice(0,120),ingredients:Array.isArray(r.ingredients)?r.ingredients:[],instructions:Array.isArray(r.steps)?r.steps.join("\n"):str(r.instructions)})}
+function addRecipeItemsToList(ingredients){
+  if(!ingredients.length){note("Wähl zuerst Zutaten aus.");return}
+  var now=new Date().toISOString(),count=0;
+  ingredients.forEach(function(it){
+    var name=str(it.name).trim();if(!name)return;
+    var qty=num(it.qty);if(qty==null||qty<=0)qty=1;var unit=str(it.unit)||"Stk";
+    var same=shopping().find(function(x){return normRecipeName(x.name)===normRecipeName(name)&&str(x.unit)===unit});
+    if(same)store.patch(same.id,{qty:Math.round((qtyOf(same)+qty)*100)/100});
+    else{
+      var p=products[productKey(name)]||{};
+      store.add(newId(),{name:name,qty:qty,unit:unit,loc:str(p.loc)||"Vorratsschrank",cat:str(p.cat)||"Sonstiges",mhd:null,price:null,shop:str(p.shop)||null,status:"list",purchase:null,boughtAt:now,removedAt:null});
+    }
+    count++;
+  });
+  if(!count){note("Wähl zuerst Zutaten aus.");return}
+  view="list";savePref();render();showToast(count+" Zutaten auf die Einkaufsliste gesetzt",true,false);
+}
+function suggestRecipes(){
+  var available=stock().map(function(it){return {name:str(it.name),qty:qtyOf(it),unit:str(it.unit)}}).slice(0,100);
+  if(!available.length){recipeError="Dein Lager ist leer. Trag zuerst Artikel ein.";render();return}
+  recipeBusy=true;recipeError="";render();
+  sb.functions.invoke("scan-receipt",{body:{mode:"recipes",ingredients:available}}).then(function(r){
+    if(r.error||!r.data||r.data.error){recipeError="Rezeptideen konnten gerade nicht geladen werden. Versuch es später noch einmal.";return}
+    recipeSuggestions=Array.isArray(r.data.recipes)?r.data.recipes.filter(function(x){return x&&str(x.name)&&Array.isArray(x.ingredients)}).slice(0,6):[];
+    if(!recipeSuggestions.length)recipeError="Die KI hat keine Rezeptideen zurückgegeben.";
+  },function(){recipeError="Keine Verbindung zur KI. Bitte versuch es noch einmal."}).then(function(){recipeBusy=false;render()});
+}
+$("recipe-add-ingredient").addEventListener("click",function(){addRecipeIngredient({})});
+$("recipe-ingredient-editor").addEventListener("click",function(e){var b=e.target.closest("[data-ri-remove]");if(b)b.parentNode.remove()});
+$("recipe-form").addEventListener("submit",function(e){e.preventDefault();persistRecipe(readRecipeForm())});
+$("recipe-cancel").addEventListener("click",closeRecipeEditor);
+$("recipe-scrim").addEventListener("click",function(e){if(e.target===$("recipe-scrim"))closeRecipeEditor()});
+$("list").addEventListener("click",function(e){
+  var b=e.target.closest("[data-recipe-act]");if(!b)return;var action=b.dataset.recipeAct;
+  if(action==="suggest"){suggestRecipes();return}
+  if(action==="new"){openRecipeEditor(null);return}
+  var card=b.closest(".recipe-card");if(!card)return;
+  var kind=card.dataset.recipeKind,recipe=kind==="saved"?recipes.find(function(x){return x.id===card.dataset.recipeId}):recipeSuggestions[+card.dataset.recipeId];
+  if(!recipe)return;
+  if(action==="edit"){openRecipeEditor(recipe);return}
+  if(action==="save"){saveSuggestedRecipe(recipe);return}
+  if(action==="add"){
+    var selected=[];Array.prototype.forEach.call(card.querySelectorAll("[data-ri]"),function(c){if(c.checked){var it=recipe.ingredients[+c.dataset.ri];if(it)selected.push(it)}});
+    addRecipeItemsToList(selected);
+  }
+});
+document.addEventListener("keydown",function(e){if(e.key==="Escape"&&!$("recipe-scrim").hidden)closeRecipeEditor()});
+
 function markBought(it){
   clearTimeout(qtyTimers[it.id]);var q=qtyOf(it);delete pendingQty[it.id];
   var same=stock().find(function(i){return str(i.name).toLowerCase()===str(it.name).toLowerCase()&&str(i.loc)===str(it.loc)&&!str(i.mhd)&&str(i.unit)===str(it.unit)});
@@ -621,20 +789,31 @@ function removeItems(list,label){
   if(!list.length)return;
   var now=new Date().toISOString();
   undoStack=list.map(function(it){return {id:it.id,qty:qtyOf(it),item:Object.assign({},it)}});
+  restockStack=list.filter(function(it){return it.status==="in"}).map(function(it){return {id:it.id,qty:qtyOf(it),item:Object.assign({},it)}});
   list.forEach(function(it){clearTimeout(qtyTimers[it.id]);delete pendingQty[it.id]});
   store.bulk(list.map(function(it){return it.id}),{status:"used",removedAt:now});
-  showToast(label);
+  showToast(label,false,restockStack.length>0);
 }
 function undo(){
   if(!undoStack)return;
-  var s=undoStack;undoStack=null;hideToast();
+  var s=undoStack;undoStack=null;restockStack=null;hideToast();
   store.restore(s);
 }
-function showToast(text,noUndo){
-  $("toast-text").textContent=text;$("undo").hidden=!!noUndo;$("toast").hidden=false;
-  clearTimeout(toastTimer);toastTimer=setTimeout(function(){hideToast();undoStack=null},8000);
+function showToast(text,noUndo,canRestock){
+  $("toast-text").textContent=text;$("undo").hidden=!!noUndo;$("restock").hidden=!canRestock;$("toast").hidden=false;
+  clearTimeout(toastTimer);toastTimer=setTimeout(function(){hideToast();undoStack=null;restockStack=null},8000);
 }
 function hideToast(){clearTimeout(toastTimer);$("toast").hidden=true}
+function restockConsumed(){
+  if(!restockStack||!restockStack.length)return;
+  var saved=restockStack;restockStack=null;undoStack=null;hideToast();var now=new Date().toISOString();
+  saved.forEach(function(u){
+    var it=u.item,same=shopping().find(function(x){return str(x.name).toLowerCase()===str(it.name).toLowerCase()&&str(x.unit)===str(it.unit)&&str(x.shop)===str(it.shop)});
+    if(same){store.patch(same.id,{qty:Math.round((qtyOf(same)+u.qty)*100)/100});store.patch(it.id,{status:"gone",removedAt:now})}
+    else store.restoreToList(it,{status:"list",qty:u.qty,removedAt:null,mhd:null,price:null,boughtAt:now,purchase:newId()});
+  });
+  view="list";savePref();render();showToast(saved.length+" "+(saved.length===1?"Artikel":"Artikel")+" auf die Einkaufsliste gesetzt",true,false);
+}
 function changeQty(id,delta){
   var it=byId(id);if(!it)return;
   var q=Math.round((qtyOf(it)+delta)*100)/100;
@@ -660,7 +839,9 @@ $("list").addEventListener("click",function(e){
 $("clear-all").addEventListener("click",function(){var l=cur().slice(),n=l.length;removeItems(l,(view==="list"?"Liste geleert: ":"Lager geleert: ")+n+" Artikel entfernt")});
 $("v-stock").addEventListener("click",function(){view="stock";savePref();render()});
 $("v-list").addEventListener("click",function(){view="list";savePref();render()});
+$("v-recipes").addEventListener("click",function(){view="recipes";savePref();render()});
 $("undo").addEventListener("click",undo);
+$("restock").addEventListener("click",restockConsumed);
 $("search").addEventListener("input",function(e){query=e.target.value;render()});
 $("by-loc").addEventListener("click",function(){groupBy="loc";savePref();render()});
 $("by-cat").addEventListener("click",function(){groupBy="cat";savePref();render()});
@@ -669,6 +850,7 @@ $("by-cat").addEventListener("click",function(){groupBy="cat";savePref();render(
 function fill(sel,opts,val){sel.innerHTML=opts.map(function(o){return "<option>"+esc(o)+"</option>"}).join("");if(val&&opts.indexOf(val)<0){var o=document.createElement("option");o.textContent=val;sel.appendChild(o)}if(val)sel.value=val}
 function resetForm(keepShop){
   $("f-name").value="";$("f-qty").value="1";$("f-mhd").value="";$("f-price").value="";
+  $("mhd-msg").textContent="";
   fill($("f-unit"),UNITS,"Stk");fill($("f-loc"),LOCS,"Vorratsschrank");fill($("f-cat"),CATS,"Sonstiges");
   if(!keepShop)$("f-shop").value="";
   $("sugg").innerHTML="";
@@ -785,6 +967,20 @@ $("scan-file").addEventListener("change",function(e){
     if(r.error||!r.data||r.data.error){var c=r.data&&r.data.error,dt=r.data&&(r.data.status||r.data.detail)?" ["+(r.data.status||"")+" "+String(r.data.detail||"").slice(0,160)+"]":"";scanMsg(c==="no_key"?"Die Foto-Funktion ist noch nicht eingerichtet (API-Key fehlt).":c==="not_member"?"Dafür fehlt die Berechtigung.":"Das Foto konnte gerade nicht ausgewertet werden. Versuch es später nochmal."+(c?" ("+c+")":"")+dt,false);return}
     showScan(r.data);
   },function(){scanMsg("Das Foto konnte nicht gelesen werden.",false)});
+});
+$("scan-mhd").addEventListener("click",function(){$("mhd-file").click()});
+$("mhd-file").addEventListener("change",function(e){
+  var f=e.target.files&&e.target.files[0];if(!f)return;
+  $("mhd-msg").textContent="MHD wird erkannt …";
+  shrink(f).then(function(b64){return sb.functions.invoke("scan-receipt",{body:{image:b64,mime:"image/jpeg",mode:"date"}})}).then(function(r){
+    if(r.error&&r.error.context&&typeof r.error.context.json==="function")return r.error.context.json().then(function(j){return {data:j,error:r.error}},function(){return r});
+    return r;
+  }).then(function(r){
+    if(r.error||!r.data||r.data.error){$("mhd-msg").textContent="Das Datum konnte gerade nicht erkannt werden.";return}
+    if(!r.data.mhd){$("mhd-msg").textContent="Kein eindeutiges MHD erkannt. Mach bitte ein schärferes Foto.";return}
+    $("f-mhd").value=r.data.mhd;$("mhd-msg").textContent="Erkannt: "+fmtDate(r.data.mhd)+(r.data.item_name?" · "+r.data.item_name:"");
+    if(r.data.item_name&&!$("f-name").value.trim())$("f-name").value=r.data.item_name;
+  },function(){$("mhd-msg").textContent="Keine Verbindung zur KI. Bitte versuch es noch einmal."}).then(function(){$("mhd-file").value=""});
 });
 $("sc-stock").addEventListener("click",function(){scanTarget("in")});
 $("sc-list").addEventListener("click",function(){scanTarget("list")});
