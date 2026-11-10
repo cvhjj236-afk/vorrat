@@ -3,13 +3,14 @@
 Gemeinsames Gedächtnis für alle, die an der App arbeiten (Simon, Claude, ChatGPT). Am Anfang jeder Sitzung lesen, nach jeder Arbeit unten einen Eintrag ergänzen.
 
 ## Aktueller Stand (2026-11-10)
-- App: index.html, Service-Worker-Cache `vorrat-v10`
+- App: index.html, Service-Worker-Cache `vorrat-v11`
 - Live: https://cvhjj236-afk.github.io/vorrat/ (Pages aus main, Deploy dauert 1–2 Min.)
 - Supabase-Projekt "Urlaubsapp" (wpxoddfaczbhxnmfidoj), enthält auch Daten einer anderen App: nur `vorrat_*` und die Funktion `scan-receipt` anfassen
 - Mehrere Haushalte pro Konto, Umschalter im Haushalt-Menü
 - Foto-Scan über Edge Function `scan-receipt` mit Gemini (Modell gemini-3.5-flash-lite)
 - Eigene Rezepte in `vorrat_recipes`, pro Haushalt mit RLS und Realtime
 - Essensplan: mehrere gespeicherte Rezepte pro Wochentag in `vorrat_mealplan`, pro Haushalt mit RLS und Realtime
+- Rezeptauswahl im Essensplan über „+ Rezepte“: durchsuchbare Checkboxliste, mehrere Rezepte gemeinsam hinzufügen
 - Gemini-Modi für Rezeptideen und MHD-Erkennung zusätzlich zum Foto-Scan
 - `supabase/functions/scan-receipt/index.ts` entspricht deployter Version 12; Verify JWT ist aktiv; Bon-/Einkaufszettel-Flow wie Version 10
 
@@ -37,3 +38,5 @@ Item-Status: "in" Lager, "list" Einkaufsliste, "used"/"gone" entnommen bzw. übe
 - 2026-11-10 (ChatGPT): Mobile UI korrigiert: Navigation unter 600 px in zwei Reihen, Wochensteuerung umgebrochen, MHD-Feld über volle Formularbreite, schmale Rezept-/Planfelder und Verbrauchshinweis angepasst; ausgeblendete Aktionsbuttons wirklich verborgen; Cache v9. Vollständige angemeldete Browser-Funktionstests noch offen (Testsitzung nicht angemeldet).
 
 - 2026-11-10 (ChatGPT): Angemeldeter Browsertest: Artikel anlegen/entnehmen, Nachkaufen, Gekauft erfolgreich; Rezepteditor geöffnet, zwei Rezepte am selben Tag zugeordnet und Testzuordnungen entfernt. Testartikel und Produktvorlage bereinigt. Essensplan-Auswahl bleibt bei Realtime-Neurendern erhalten, doppelte Rezeptnamen im Auswahlmenü entfernt; Cache v10. Haushaltswechsel mangels zweitem Haushalt nicht getestet; Fotoauswertung mit echten Bildern weiterhin offen.
+
+- 2026-11-10 (ChatGPT): Dropdowns im Essensplan durch aufklappbare Rezeptauswahl je Tag ersetzt: Suche, große Checkboxzeilen, Mehrfachauswahl und gemeinsames Hinzufügen mit einem Insert. Bereits eingeplante Rezepte werden ausgeblendet; Suche/Auswahl bleiben beim Neurendern erhalten. Abbrechen und Wochen-/Haushaltswechsel verwerfen den Auswahlentwurf; Speicherfehler erscheinen direkt bei der Auswahl. Cache v11. Browserprüfung mit lokalen, rein speicherinternen Testdaten: Suche, Mehrfachauswahl, Hinzufügen/Entfernen, Abbrechen, Wochenwechsel und Neurendern erfolgreich; bei 320/390 px kein horizontaler Überlauf, auch bei langem Rezeptnamen. Keine DB-/Edge-Function-Änderung. Offene Prüfungen mit echten Bildern und zweitem Haushalt bleiben bestehen.
