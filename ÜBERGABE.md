@@ -3,7 +3,7 @@
 Gemeinsames Gedächtnis für alle, die an der App arbeiten (Simon, Claude, ChatGPT). Am Anfang jeder Sitzung lesen, nach jeder Arbeit unten einen Eintrag ergänzen.
 
 ## Aktueller Stand (2026-11-10)
-- App: index.html, Service-Worker-Cache `vorrat-v8`
+- App: index.html, Service-Worker-Cache `vorrat-v9`
 - Live: https://cvhjj236-afk.github.io/vorrat/ (Pages aus main, Deploy dauert 1–2 Min.)
 - Supabase-Projekt "Urlaubsapp" (wpxoddfaczbhxnmfidoj), enthält auch Daten einer anderen App: nur `vorrat_*` und die Funktion `scan-receipt` anfassen
 - Mehrere Haushalte pro Konto, Umschalter im Haushalt-Menü
@@ -33,3 +33,5 @@ Item-Status: "in" Lager, "list" Einkaufsliste, "used"/"gone" entnommen bzw. übe
 - 2026-11-10 (ChatGPT): Deployte `scan-receipt`-Edge-Function Version 10 unverändert unter `supabase/functions/scan-receipt/index.ts` abgelegt; Übergabe aktualisiert, veralteten offenen Punkt entfernt
 - 2026-11-10 (ChatGPT): KI-Rezeptideen, eigene Rezepte mit wählbaren Zutaten, Verbrauchte Artikel auf die Einkaufsliste setzen und MHD-Fotoerkennung ergänzt; Tabelle `vorrat_recipes` mit RLS/Realtime; Edge Function Version 12 mit unverändertem Bon-/Einkaufszettel-Flow; Cache v7
 - 2026-11-10 (ChatGPT): Wochen-Essensplan ergänzt, mehrere Rezepte pro Tag; neue Tabelle `vorrat_mealplan` mit Haushalts-RLS/Realtime; Cache v8
+
+- 2026-11-10 (ChatGPT): Mobile UI korrigiert: Navigation unter 600 px in zwei Reihen, Wochensteuerung umgebrochen, MHD-Feld über volle Formularbreite, schmale Rezept-/Planfelder und Verbrauchshinweis angepasst; ausgeblendete Aktionsbuttons wirklich verborgen; Cache v9. Vollständige angemeldete Browser-Funktionstests noch offen (Testsitzung nicht angemeldet).
