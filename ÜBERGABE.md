@@ -20,6 +20,7 @@ Funktionen: vorrat_my_household, vorrat_my_households, vorrat_switch_household, 
 Item-Status: "in" Lager, "list" Einkaufsliste, "used"/"gone" entnommen bzw. übernommen.
 
 ## Regeln
+- Simon hat am 2026-11-10 festgelegt: fertige, getestete Änderungen an Vorrat immer direkt live schalten; keine zusätzliche Release-Rückfrage nötig.
 - Bei jeder Änderung an index.html die Cache-Version in sw.js erhöhen
 - Datenbankänderungen: SQL vorher zeigen, bestehende Daten und die Trennung pro Haushalt nie gefährden, hier eintragen
 - Secrets (GOOGLE_API_KEY, GEMINI_MODEL) nie ausgeben oder in Code schreiben, "Verify JWT" der Funktion bleibt an
