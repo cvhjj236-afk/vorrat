@@ -3,7 +3,7 @@
 Gemeinsames Gedächtnis für alle, die an der App arbeiten (Simon, Claude, ChatGPT). Am Anfang jeder Sitzung lesen, nach jeder Arbeit unten einen Eintrag ergänzen.
 
 ## Aktueller Stand (2026-11-10)
-- App: index.html, Service-Worker-Cache `vorrat-v14`
+- App: index.html, Service-Worker-Cache `vorrat-v15`
 - Live: https://cvhjj236-afk.github.io/vorrat/ (Pages aus main, Deploy dauert 1–2 Min.)
 - Supabase-Projekt "Urlaubsapp" (wpxoddfaczbhxnmfidoj), enthält auch Daten einer anderen App: nur `vorrat_*`, `scan-receipt` und den autorisierten HOFER-Import `vorrat-hofer-import` anfassen
 - Mehrere Haushalte pro Konto, Umschalter im Haushalt-Menü
@@ -64,3 +64,7 @@ Item-Status: "in" Lager, "list" Einkaufsliste, "used"/"gone" entnommen bzw. übe
 - Geprüft: TypeScript-Syntax, reales Publitas-Seitenverzeichnis mit 52 Seiten, Auswahl exakt fünf Seiten, Datum-/Preis-/Kategorievalidierung, Produkt-Deduplizierung, URL-Beschränkungen, entzogene App-Tabellenrechte und aktive RLS. Security-Advisors weisen erwartungsgemäß auf die absichtlich ohne Client-Policies gesperrten Tabellen hin.
 
 - Echter Testlauf `663b9a8e-09d6-4520-9101-44a70519270d`: abgeschlossen, exakt Seiten 1–5 von 52, festes gemini-3.5-flash-lite, 3 Angebote übernommen und 9 zur Prüfung zurückgehalten, kein Fehler. Preise/Stichprobe Titelblatt stimmen mit dem veröffentlichten OCR-Text überein (Kartoffeln 5 kg 2,49 €, Olivenöl 500 ml 4,79 €, Kaffee 1 kg 9,99 €).
+
+- HOFER-Anzeige in der Einkaufsliste über „HOFER-Aktionen ansehen“ ergänzt. Suche, Kategorien, Filter „Nur jetzt gültige Aktionen“, künftige Angebote mit Ab-Datum, Preis/Menge/Bedingungen und Link zur Flugblattseite. Übernahme öffnet den vorhandenen Listeneditor mit Artikel/Packungsgröße, 1 Pkg, Kategorie und HOFER. Kein Importauslöser in der App.
+- Migration `20261110142955_show_hofer_test_catalog.sql`: angenommene Angebote abgeschlossener Testläufe sind jetzt für Haushaltsmitglieder abrufbar und deutlich als Testausgabe/erste fünf Seiten gekennzeichnet. Vollständig abgeschlossene reguläre Ausgabe hat Vorrang. Ungeklärte Rohangebote bleiben im Backend.
+- Cache v15. JavaScript-Syntax und Browser mit lokalen Testdaten geprüft: Öffnen, Zukunft/aktuell filtern, Kategorie, Suche, Übernahme und Speichern auf Einkaufsliste; 320/390 px ohne horizontalen Überlauf. Keine App-Konsolenfehler. Produktiver Schreib-/Anmeldetest mangels angemeldeter Browsersitzung nicht durchgeführt. Voriger Hinweis „App nur lokal/Cache v14“ ist damit überholt.
