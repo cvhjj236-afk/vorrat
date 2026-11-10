@@ -3,7 +3,7 @@
 Gemeinsames Gedächtnis für alle, die an der App arbeiten (Simon, Claude, ChatGPT). Am Anfang jeder Sitzung lesen, nach jeder Arbeit unten einen Eintrag ergänzen.
 
 ## Aktueller Stand (2026-11-10)
-- App: index.html, Service-Worker-Cache `vorrat-v9`
+- App: index.html, Service-Worker-Cache `vorrat-v10`
 - Live: https://cvhjj236-afk.github.io/vorrat/ (Pages aus main, Deploy dauert 1–2 Min.)
 - Supabase-Projekt "Urlaubsapp" (wpxoddfaczbhxnmfidoj), enthält auch Daten einer anderen App: nur `vorrat_*` und die Funktion `scan-receipt` anfassen
 - Mehrere Haushalte pro Konto, Umschalter im Haushalt-Menü
@@ -35,3 +35,5 @@ Item-Status: "in" Lager, "list" Einkaufsliste, "used"/"gone" entnommen bzw. übe
 - 2026-11-10 (ChatGPT): Wochen-Essensplan ergänzt, mehrere Rezepte pro Tag; neue Tabelle `vorrat_mealplan` mit Haushalts-RLS/Realtime; Cache v8
 
 - 2026-11-10 (ChatGPT): Mobile UI korrigiert: Navigation unter 600 px in zwei Reihen, Wochensteuerung umgebrochen, MHD-Feld über volle Formularbreite, schmale Rezept-/Planfelder und Verbrauchshinweis angepasst; ausgeblendete Aktionsbuttons wirklich verborgen; Cache v9. Vollständige angemeldete Browser-Funktionstests noch offen (Testsitzung nicht angemeldet).
+
+- 2026-11-10 (ChatGPT): Angemeldeter Browsertest: Artikel anlegen/entnehmen, Nachkaufen, Gekauft erfolgreich; Rezepteditor geöffnet, zwei Rezepte am selben Tag zugeordnet und Testzuordnungen entfernt. Testartikel und Produktvorlage bereinigt. Essensplan-Auswahl bleibt bei Realtime-Neurendern erhalten, doppelte Rezeptnamen im Auswahlmenü entfernt; Cache v10. Haushaltswechsel mangels zweitem Haushalt nicht getestet; Fotoauswertung mit echten Bildern weiterhin offen.
