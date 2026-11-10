@@ -34,31 +34,46 @@ Deno.serve(async (req) => {
   });
   const { data: member, error: mErr } = await sb.rpc("vorrat_is_member");
   if (mErr || member !== true) return json({ error: "not_member" }, 403);
-  let body: { image?: string; mime?: string; mode?: string };
+  let body: { image?: string; mime?: string; mode?: string; ingredients?: Array<{ name?: string; qty?: number; unit?: string }> };
   try { body = await req.json(); } catch { return json({ error: "bad_json" }, 400); }
+  const mode = body.mode ?? "receipt";
+  const recipeMode = mode === "recipes";
+  const dateMode = mode === "date";
   const img = body.image ?? "";
   const mime = ["image/jpeg", "image/png", "image/webp"].includes(body.mime ?? "") ? body.mime! : "image/jpeg";
-  if (!img || img.length > 6_000_000) return json({ error: "image" }, 400);
-  const receipt = body.mode !== "list";
+  if (recipeMode) {
+    if (!Array.isArray(body.ingredients) || body.ingredients.length > 100) return json({ error: "ingredients" }, 400);
+  } else if (!img || img.length > 6_000_000) return json({ error: "image" }, 400);
+  const receipt = mode !== "list";
   const key = Deno.env.get("GOOGLE_API_KEY");
   if (!key) return json({ error: "no_key" }, 500);
-  const prompt = (receipt
-    ? "Das Foto zeigt einen Kassabon (Österreich/Deutschland)."
-    : "Das Foto zeigt einen handgeschriebenen oder gedruckten Einkaufszettel.") +
-    " Lies alle Artikel aus. Antworte NUR mit JSON ohne Erklärung, Format: " +
-    '{"shop":string|null,"items":[{"name":string,"qty":number,"unit":string,"price":number|null,"cat":string}]}. ' +
-    "name: lesbarer deutscher Artikelname (Abkürzungen auflösen, ohne Mengenangabe). qty: Menge, Standard 1. " +
-    "unit: eine aus " + JSON.stringify(UNITS) + ". cat: eine aus " + JSON.stringify(CATS) + ". " +
-    (receipt
-      ? "price: Gesamtpreis der Zeile in Euro (Zahl) oder null. shop: Name des Geschäfts oder null. Pfand, Rabattzeilen, Summe und Zahlungsinfos weglassen."
-      : "price immer null. shop: null, außer ein Geschäft steht auf dem Zettel.");
+  const recipeUnits = [...UNITS, "EL", "TL", "Prise", "Bund"];
+  const available = (body.ingredients ?? []).slice(0, 100).map((i) => ({
+    name: String(i?.name ?? "").slice(0, 80),
+    qty: typeof i?.qty === "number" && i.qty > 0 ? i.qty : 1,
+    unit: String(i?.unit ?? "Stk").slice(0, 16),
+  })).filter((i) => i.name);
+  const prompt = recipeMode
+    ? "Du bist eine praktische Kochassistenz. Erstelle genau 4 unterschiedliche, alltagstaugliche Rezeptideen auf Deutsch für diesen Haushalt. Verwende möglichst viele der vorhandenen Zutaten; fehlende Grundzutaten wie Salz, Pfeffer oder Öl sind erlaubt. Erfinde keine vorhandenen Vorräte. Antworte NUR als JSON ohne Markdown im Format {\"recipes\":[{\"name\":string,\"description\":string,\"minutes\":number,\"servings\":number,\"ingredients\":[{\"name\":string,\"qty\":number,\"unit\":string}],\"steps\":[string]}]}. Zutaten im JSON sind die vollständigen Zutaten für das Rezept, Mengen für 2 Portionen. Einheiten nur aus " + JSON.stringify(recipeUnits) + ". Verwende klare, kurze Kochschritte und Zutaten mit üblichen deutschen Namen. Vorhandene Zutaten: " + JSON.stringify(available)
+    : dateMode
+      ? "Das Foto zeigt die Verpackung eines Lebensmittels. Lies das Mindesthaltbarkeitsdatum (MHD), nicht Herstellungs-, Abpack- oder Losnummern. Gib das Datum ausschließlich als YYYY-MM-DD zurück, wenn Tag, Monat und Jahr sicher lesbar sind; sonst null. Antworte NUR als JSON ohne Erklärung im Format {\"item_name\":string|null,\"mhd\":string|null}. item_name ist der Produktname, wenn er lesbar ist. Bei mehrdeutigem oder unvollständigem Datum muss mhd null sein."
+      : (receipt
+        ? "Das Foto zeigt einen Kassabon (Österreich/Deutschland)."
+        : "Das Foto zeigt einen handgeschriebenen oder gedruckten Einkaufszettel.") +
+        " Lies alle Artikel aus. Antworte NUR mit JSON ohne Erklärung, Format: " +
+        '{"shop":string|null,"items":[{"name":string,"qty":number,"unit":string,"price":number|null,"cat":string}]}. ' +
+        "name: lesbarer deutscher Artikelname (Abkürzungen auflösen, ohne Mengenangabe). qty: Menge, Standard 1. " +
+        "unit: eine aus " + JSON.stringify(UNITS) + ". cat: eine aus " + JSON.stringify(CATS) + ". " +
+        (receipt
+          ? "price: Gesamtpreis der Zeile in Euro (Zahl) oder null. shop: Name des Geschäfts oder null. Pfand, Rabattzeilen, Summe und Zahlungsinfos weglassen."
+          : "price immer null. shop: null, außer ein Geschäft steht auf dem Zettel.");
   const model = Deno.env.get("GEMINI_MODEL") || 'gemini-3.5-flash-lite';
   const gen = (think: boolean) => fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent', {
     method: 'POST',
     headers: { 'x-goog-api-key': key, 'content-type': 'application/json' },
     signal: AbortSignal.timeout(45000),
     body: JSON.stringify({
-      contents: [{ parts: [{ inline_data: { mime_type: mime, data: img } }, { text: prompt }] }],
+      contents: [{ parts: (recipeMode ? [] : [{ inline_data: { mime_type: mime, data: img } }]).concat([{ text: prompt }]) }],
       generationConfig: think
         ? { responseMimeType: 'application/json', temperature: 0, thinkingConfig: { thinkingLevel: 'minimal' } }
         : { responseMimeType: 'application/json', temperature: 0 },
@@ -74,6 +89,26 @@ Deno.serve(async (req) => {
   if (!m) return json({ error: "parse" }, 502);
   try {
     const p = JSON.parse(m[0]);
+    if (recipeMode) {
+      const recipes = (Array.isArray(p.recipes) ? p.recipes : []).slice(0, 6).map((x: Record<string, unknown>) => ({
+        name: String(x.name ?? "").slice(0, 120),
+        description: String(x.description ?? "").slice(0, 240),
+        minutes: typeof x.minutes === "number" && x.minutes > 0 ? Math.min(Math.round(x.minutes), 300) : null,
+        servings: typeof x.servings === "number" && x.servings > 0 ? Math.min(Math.round(x.servings), 20) : 2,
+        ingredients: (Array.isArray(x.ingredients) ? x.ingredients : []).slice(0, 40).map((i: Record<string, unknown>) => ({
+          name: String(i.name ?? "").slice(0, 80),
+          qty: typeof i.qty === "number" && i.qty > 0 ? Math.min(i.qty, 10000) : 1,
+          unit: recipeUnits.includes(String(i.unit)) ? String(i.unit) : "Stk",
+        })).filter((i: { name: string }) => i.name),
+        steps: (Array.isArray(x.steps) ? x.steps : []).slice(0, 12).map((s: unknown) => String(s).slice(0, 500)).filter(Boolean),
+      })).filter((x: { name: string; ingredients: unknown[] }) => x.name && x.ingredients.length);
+      return json({ recipes });
+    }
+    if (dateMode) {
+      const date = typeof p.mhd === "string" && /^\d{4}-\d{2}-\d{2}$/.test(p.mhd) ? new Date(p.mhd + "T00:00:00Z") : null;
+      const d = date && !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === p.mhd ? p.mhd : null;
+      return json({ item_name: typeof p.item_name === "string" ? p.item_name.slice(0, 80) : null, mhd: d });
+    }
     const items = (Array.isArray(p.items) ? p.items : []).slice(0, 80).map((i: Record<string, unknown>) => ({
       name: String(i.name ?? "").slice(0, 80),
       qty: typeof i.qty === "number" && i.qty > 0 ? i.qty : 1,
