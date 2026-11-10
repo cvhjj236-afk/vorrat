@@ -12,7 +12,7 @@ Einkaufs- und Vorrats-App für mehrere Haushalte: Einkäufe erfassen, Lagerbesta
 
 Mit der Foto-Funktion kannst du einen Kassenbon oder eine Einkaufsliste fotografieren. Die App verkleinert das Bild im Browser auf maximal 1.600 Pixel Kantenlänge und sendet es als JPEG an die Supabase-Edge-Function `scan-receipt`. Die erkannten Artikel kannst du prüfen und bearbeiten, bevor sie in den Vorrat oder auf die Einkaufsliste übernommen werden.
 
-Im Bereich „Rezepte" kannst du eigene Rezepte samt Zutaten speichern und Zutaten auswählen, die auf die Einkaufsliste sollen. Die KI kann außerdem Rezeptideen aus dem aktuellen Lagerbestand vorschlagen. Bei einem Artikel kannst du das Haltbarkeitsdatum fotografieren und per Gemini erkennen lassen.
+Im Bereich „Rezepte" kannst du eigene Rezepte samt Zutaten speichern und Zutaten auswählen, die auf die Einkaufsliste sollen. Die KI kann außerdem Rezeptideen aus dem aktuellen Lagerbestand vorschlagen. Der „Essensplan" ordnet mehrere Rezepte den einzelnen Wochentagen zu. Bei einem Artikel kannst du das Haltbarkeitsdatum fotografieren und per Gemini erkennen lassen.
 
 Die Beschreibung dieser Funktion wurde mit ChatGPT in die README aufgenommen. ChatGPT hat die Foto-KI-Funktion selbst nicht erstellt; sie war bereits in der App vorhanden.
 
@@ -20,7 +20,7 @@ Der Edge-Function-Code ist unter `supabase/functions/scan-receipt/index.ts` im R
 
 ## Daten und Zugriff
 
-Daten und Login liegen in Supabase (Tabellen mit Präfix `vorrat_`, Row Level Security). Bestand und gespeicherte Rezepte sind pro Haushalt getrennt. Neue Mitglieder treten mit einem Einladungscode bei, den ein bestehendes Mitglied in der App unter „Haushalt" erzeugt. Der Code gilt 7 Tage und nur einmal.
+Daten und Login liegen in Supabase (Tabellen mit Präfix `vorrat_`, Row Level Security). Bestand, gespeicherte Rezepte und Essensplan sind pro Haushalt getrennt. Neue Mitglieder treten mit einem Einladungscode bei, den ein bestehendes Mitglied in der App unter „Haushalt" erzeugt. Der Code gilt 7 Tage und nur einmal.
 
 Der Schlüssel in `index.html` ist der öffentliche „publishable key" und darf im Code stehen. Geheime Schlüssel gehören nie ins Repository.
 
