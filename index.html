@@ -171,6 +171,17 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .recipe-category-options label{display:flex;gap:8px;align-items:center;min-height:44px;padding:7px;border-radius:8px;font-size:14px}
 .recipe-category-options label:has(input:checked){background:var(--accent-soft)}
 .recipe-category-options input{width:20px;height:20px;flex:none;accent-color:var(--accent)}
+.cook-rows{list-style:none;padding:0;margin:12px 0}
+.cook-row{display:grid;grid-template-columns:24px minmax(0,1fr) 88px;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.cook-row input[type=checkbox]{width:22px;height:22px;accent-color:var(--accent)}
+.cook-row label{min-width:0;overflow-wrap:anywhere}
+.cook-row small{display:block;color:var(--muted);font-size:12px}
+.cook-row input[type=text]{width:100%;min-width:0;padding:10px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);font-size:16px}
+.cook-row .cook-amount{font-size:12px;color:var(--muted);text-align:right}
+.cook-sheet .sheet-head{align-items:flex-start;gap:10px}
+.cook-sheet h2{overflow-wrap:anywhere;min-width:0}
+.cook-sheet .primary{margin-top:12px}
+.cook-warnings{padding-left:20px;font-size:14px;color:var(--warn)}
 .recipe-card .recipe-actions button{min-height:44px}
 .recipe-card p{margin:6px 0;color:var(--muted);font-size:14px}
 .recipe-card .recipe-meta{font-size:13px;color:var(--muted)}
@@ -202,7 +213,8 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .plan-picks{list-style:none;margin:0;padding:0}
 .plan-picks li{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line)}
 .plan-picks li span{flex:1;min-width:0;overflow-wrap:anywhere}
-.plan-picks button{border:0;background:none;color:var(--crit);font-size:20px;padding:2px 8px}
+.plan-picks button[data-plan-action="remove"]{border:0;background:none;color:var(--crit);font-size:20px;padding:2px 8px}
+.plan-picks button[data-plan-action="cook"]{min-height:44px;font-size:13px;padding:6px 10px;flex:none}
 .plan-empty{color:var(--muted);font-size:14px;margin:0 0 10px}
 .plan-add{margin-top:10px}
 .plan-add>button{min-height:44px}
@@ -341,6 +353,15 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     </form>
   </div>
 </div>
+<div class="scrim" id="cook-scrim" hidden>
+  <div class="sheet cook-sheet" role="dialog" aria-modal="true" aria-labelledby="cook-title">
+    <div class="sheet-head"><h2 id="cook-title">Gekocht</h2><button class="x" id="cook-close" type="button">Schließen</button></div>
+    <p class="hint">Prüfe die verwendeten Mengen. Die ausgewählten Artikel werden gemeinsam aus dem Lager entnommen. Restmengen bleiben erhalten.</p>
+    <div id="cook-body"></div>
+    <p class="recipe-error" id="cook-error" role="alert"></p>
+    <button class="primary" id="cook-confirm" type="button">Aus Lager entnehmen</button>
+  </div>
+</div>
 <div class="scrim" id="scrim2" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="hh-title">
     <div class="sheet-head">
@@ -433,6 +454,7 @@ var products={};        // key -> {name,unit,cat,loc,shop}
 var recipes=[],recipeSuggestions=[],recipeBusy=false,recipeError="";
 var recipeFilter="saved",recipesLoaded=false,recipeLoadError="",recipeSaving=false,recipeFavoriteBusy="",recipeDataEpoch=0;
 var RECIPE_CATEGORIES=["Frühstück","Hauptgerichte","Suppen & Eintöpfe","Salate & Beilagen","Snacks & Kleinigkeiten","Nachspeisen & Backen"],recipeCategory="all",planPickerCategory="all";
+var cookRows=[],cookWarnings=[],cookBusy=false,cookLocked=false,cookEpoch=0;
 var mealPlanEntries=[],mealPlanLoaded=false,mealPlanBusy=false,mealPlanError="",mealPlanWeekOffset=0;
 var planPickerDate="",planPickerQuery="",planPickerNames=[];
 var pendingQty={};      // id -> qty (noch nicht geschrieben)
@@ -565,6 +587,7 @@ function startData(){
   });
 }
 function stopData(){
+  closeCook(true);
   recipeDataEpoch++;recipesLoaded=false;recipeLoadError="";recipeFilter="saved";recipeSaving=false;recipeFavoriteBusy="";closeRecipeEditor();
   recipeCategory="all";planPickerCategory="all";
   dataStarted=false;subscribedOnce=false;
@@ -796,7 +819,7 @@ function renderRecipeCard(r,kind,n){
   return '<article class="recipe-card" data-recipe-kind="'+kind+'" data-recipe-id="'+id+'"><div class="recipe-card-head"><h2>'+esc(r.name||"Rezept")+'</h2>'+star+'</div>'+
     '<div class="recipe-tags">'+(recipeCategories(r).length?recipeCategories(r):['Ohne Kategorie']).map(function(c){return '<span>'+esc(c)+'</span>'}).join('')+'</div>'+
     (saved?'<p class="recipe-meta">'+ingredients.length+(ingredients.length===1?' Zutat':' Zutaten')+(r.favorite?' · ★ Favorit':'')+'</p><details class="recipe-details"><summary>Rezept öffnen</summary>'+body+'</details>':(r.description?'<p>'+esc(r.description)+'</p>':'')+(meta.length?'<p class="recipe-meta">'+meta.join(" · ")+'</p>':'')+body)+
-    '<div class="recipe-actions"><button class="pillbtn" type="button" data-recipe-act="edit"'+disabled+'>'+(saved?'Bearbeiten':'Bearbeiten & speichern')+'</button>'+(!saved?'<button class="pillbtn" type="button" data-recipe-act="save"'+disabled+'>Rezept speichern</button>':'')+'</div></article>';
+    '<div class="recipe-actions"><button class="pillbtn" type="button" data-recipe-act="cook">Gekocht</button><button class="pillbtn" type="button" data-recipe-act="edit"'+disabled+'>'+(saved?'Bearbeiten':'Bearbeiten & speichern')+'</button>'+(!saved?'<button class="pillbtn" type="button" data-recipe-act="save"'+disabled+'>Rezept speichern</button>':'')+'</div></article>';
 }
 function renderRecipes(){
   var open=[],checked={};Array.prototype.forEach.call($("list").querySelectorAll('.recipe-card'),function(card){var key=card.dataset.recipeKind+':'+card.dataset.recipeId,d=card.querySelector('details');if(d&&d.open)open.push(key);checked[key]=Array.prototype.map.call(card.querySelectorAll('[data-ri]'),function(c){return c.checked})});
@@ -833,7 +856,7 @@ function renderMealPlan(){
     var dayTitle=new Intl.DateTimeFormat("de-AT",{weekday:"long",day:"numeric",month:"long"}).format(d);
     html+='<section class="plan-day"><h2>'+esc(dayTitle)+'</h2>';
     if(assigned.length){
-      html+='<ul class="plan-picks">'+assigned.map(function(x){return '<li><span>'+esc(x.recipe_name)+'</span><button type="button" data-plan-action="remove" data-date="'+iso+'" data-recipe="'+esc(x.recipe_name)+'" aria-label="'+esc(x.recipe_name)+' entfernen"'+(mealPlanBusy?" disabled":"")+'>×</button></li>'}).join("")+'</ul>';
+      html+='<ul class="plan-picks">'+assigned.map(function(x){return '<li><span>'+esc(x.recipe_name)+'</span><button class="pillbtn" type="button" data-plan-action="cook" data-recipe="'+esc(x.recipe_name)+'" aria-label="Zutaten für '+esc(x.recipe_name)+' entnehmen">Gekocht</button><button type="button" data-plan-action="remove" data-date="'+iso+'" data-recipe="'+esc(x.recipe_name)+'" aria-label="'+esc(x.recipe_name)+' entfernen"'+(mealPlanBusy?" disabled":"")+'>×</button></li>'}).join("")+'</ul>';
     }else html+='<p class="plan-empty">Noch kein Rezept eingetragen.</p>';
     if(recipes.length){
       var names=recipes.map(function(r){return r.name}).filter(function(name,i,all){return all.indexOf(name)===i&&!assigned.some(function(x){return x.recipe_name===name})});
@@ -964,6 +987,7 @@ $("list").addEventListener("click",function(e){
   var kind=card.dataset.recipeKind,recipe=kind==="saved"?recipes.find(function(x){return x.id===card.dataset.recipeId}):recipeSuggestions[+card.dataset.recipeId];
   if(!recipe)return;
   if(action==="edit"){openRecipeEditor(recipe);return}
+  if(action==="cook"){openCook(recipe);return}
   if(action==="save"){saveSuggestedRecipe(recipe);return}
   if(action==="favorite"){if(kind==='saved')toggleRecipeFavorite(recipe);else saveSuggestedRecipe(recipe,true);return}
   if(action==="add"){
@@ -982,6 +1006,7 @@ $("list").addEventListener("click",function(e){
   if(action==="week"){setMealPlanWeek(mealPlanWeekOffset+Number(b.dataset.offset));return}
   if(action==="today"){setMealPlanWeek(0);return}
   if(action==="recipes"){view="recipes";savePref();render();return}
+  if(action==="cook"){var matches=recipes.filter(function(r){return r.name===b.dataset.recipe});if(matches.length===1)openCook(matches[0]);else note(matches.length?'Mehrere Rezepte haben diesen Namen. Öffne das passende unter „Rezepte“.':'Das Rezept ist nicht mehr gespeichert.');return}
   if(action==="pick"||action==="cancel-picks"){
     var previousDate=planPickerDate;
     var date=action==="pick"&&planPickerDate!==b.dataset.date?b.dataset.date:"";
@@ -1010,7 +1035,80 @@ $("list").addEventListener("change",function(e){
   if(e.target.checked)planPickerNames.push(name);
   updatePlanPicker();
 });
-document.addEventListener("keydown",function(e){if(e.key==="Escape"&&!$("recipe-scrim").hidden)closeRecipeEditor()});
+document.addEventListener("keydown",function(e){if(e.key!=="Escape")return;if(!$("cook-scrim").hidden)closeCook();else if(!$("recipe-scrim").hidden)closeRecipeEditor()});
+
+/* ---------- Gekocht: gemeinsame Entnahme mit Mengenprüfung ---------- */
+function cookRound(n){return Math.round(n*1e6)/1e6}
+function cookFmt(n){return new Intl.NumberFormat('de-AT',{maximumFractionDigits:6}).format(n)}
+function cookUnit(unit){var u=str(unit).trim().toLowerCase();if(u==='g'||u==='kg')return {group:'mass',factor:u==='kg'?1000:1};if(u==='ml'||u==='l')return {group:'volume',factor:u==='l'?1000:1};return {group:u,factor:1}}
+function buildCookDraft(recipe,available){
+  var planned={},warnings=[];
+  var sorted=available.slice().sort(function(a,b){return (str(a.mhd)||'9999').localeCompare(str(b.mhd)||'9999')});
+  (Array.isArray(recipe.ingredients)?recipe.ingredients:[]).forEach(function(ingredient){
+    var amount=num(ingredient.qty),name=str(ingredient.name),unit=str(ingredient.unit)||'Stk';if(amount==null||amount<=0){warnings.push(name+': Menge fehlt. Wähle bei Bedarf unten einen Lagerartikel.');return}
+    var needed=cookRound(amount),remaining=needed,recipeUnit=cookUnit(unit);
+    sorted.forEach(function(it){
+      var stockUnit=cookUnit(it.unit);if(normRecipeName(it.name)!==normRecipeName(name)||stockUnit.group!==recipeUnit.group||remaining<=0)return;
+      var free=cookRound(Math.max(0,(num(it.qty)||0)-(planned[it.id]||0)));
+      var take=cookRound(Math.min(free,remaining*recipeUnit.factor/stockUnit.factor));
+      if(take<=0)return;planned[it.id]=cookRound((planned[it.id]||0)+take);remaining=cookRound(Math.max(0,remaining-take*stockUnit.factor/recipeUnit.factor));
+    });
+    if(remaining>0)warnings.push(name+': benötigt '+cookFmt(needed)+' '+unit+', automatisch zugeordnet '+cookFmt(cookRound(needed-remaining))+' '+unit+'. Prüfe unten passende Lagerartikel und Mengen.');
+  });
+  return {rows:sorted.map(function(it){return {item:Object.assign({},it),qty:planned[it.id]||Math.min(1,Math.max(0,num(it.qty)||0)),selected:!!planned[it.id],automatic:!!planned[it.id]}}),warnings:warnings};
+}
+function openCook(recipe){
+  if(Object.keys(pendingQty).length){note('Die Lageränderung wird noch gespeichert. Tippe gleich noch einmal auf „Gekocht“.');return}
+  var draft=buildCookDraft(recipe,stock());cookRows=draft.rows;cookWarnings=draft.warnings;cookBusy=false;cookLocked=false;cookEpoch=recipeDataEpoch;
+  $('cook-title').textContent='Gekocht: '+str(recipe.name);$('cook-error').textContent='';$('cook-close').disabled=false;renderCook();$('cook-scrim').hidden=false;$('cook-close').focus();
+}
+function closeCook(force){if(cookBusy&&!force)return;$('cook-scrim').hidden=true;cookRows=[];cookWarnings=[];cookBusy=false;cookLocked=false}
+function renderCook(){
+  function rowsHtml(rows){return '<ul class="cook-rows">'+rows.map(function(row){var i=cookRows.indexOf(row),it=row.item,id='cook-item-'+i;return '<li class="cook-row"><input id="'+id+'" type="checkbox" data-cook-check="'+i+'"'+(row.selected?' checked':'')+'><label for="'+id+'">'+esc(it.name)+'<small>Im Lager: '+esc(cookFmt(it.qty))+' '+esc(it.unit)+(it.loc?' · '+esc(it.loc):'')+(it.mhd?' · MHD '+esc(fmtDate(it.mhd)):'')+'</small></label><div class="cook-amount"><input type="text" inputmode="decimal" data-cook-qty="'+i+'" value="'+esc(cookFmt(row.qty))+'" aria-label="Verwendete Menge '+esc(it.name)+' in '+esc(it.unit)+'">'+esc(it.unit)+'</div></li>'}).join('')+'</ul>'}
+  var matched=cookRows.filter(function(r){return r.automatic}),other=cookRows.filter(function(r){return !r.automatic});
+  var html=cookWarnings.length?'<ul class="cook-warnings">'+cookWarnings.map(function(w){return '<li>'+esc(w)+'</li>'}).join('')+'</ul>':'';
+  if(matched.length)html+=rowsHtml(matched);
+  if(other.length)html+='<details'+(!matched.length?' open':'')+'><summary>Weitere Lagerartikel auswählen ('+other.length+')</summary>'+rowsHtml(other)+'</details>';
+  if(!cookRows.length)html+='<p class="hint">Dein Lager ist leer. Es kann nichts entnommen werden.</p>';
+  $('cook-body').innerHTML=html;updateCookButton();
+}
+function updateCookButton(){var count=cookRows.filter(function(r){return r.selected}).length,b=$('cook-confirm');b.disabled=cookBusy||cookLocked||!count;b.textContent=cookBusy?'Wird entnommen …':count?'Ausgewählte Zutaten entnehmen ('+count+')':'Aus Lager entnehmen'}
+$('cook-body').addEventListener('change',function(e){if(e.target.hasAttribute('data-cook-check')){cookRows[+e.target.dataset.cookCheck].selected=e.target.checked;updateCookButton()}});
+$('cook-body').addEventListener('input',function(e){if(e.target.hasAttribute('data-cook-qty'))cookRows[+e.target.dataset.cookQty].qty=parseNum(e.target.value)});
+$('cook-close').addEventListener('click',function(){closeCook()});
+$('cook-scrim').addEventListener('click',function(e){if(e.target===$('cook-scrim'))closeCook()});
+function conditionalCookWrite(before,after){
+  return sb.from('vorrat_items').update(after).eq('id',before.id).eq('status',before.status).eq('qty',before.qty).eq('unit',before.unit).select('id');
+}
+$('cook-confirm').addEventListener('click',function(){
+  if(cookBusy||cookLocked||cookEpoch!==recipeDataEpoch)return;
+  var selected=cookRows.filter(function(r){return r.selected});if(!selected.length)return;
+  var invalid=selected.find(function(r){return num(r.qty)==null||cookRound(r.qty)<=0||cookRound(r.qty)>r.item.qty});
+  if(invalid){$('cook-error').textContent='Prüfe die Menge bei „'+invalid.item.name+'“: mehr als 0 und höchstens '+cookFmt(invalid.item.qty)+' '+invalid.item.unit+'.';return}
+  cookBusy=true;$('cook-error').textContent='';updateCookButton();$('cook-close').disabled=true;
+  Array.prototype.forEach.call($('cook-body').querySelectorAll('input'),function(el){el.disabled=true});
+  var epoch=cookEpoch,now=new Date().toISOString();
+  var jobs=selected.map(function(row){var left=cookRound(row.item.qty-row.qty),after={qty:left,status:left>0?'in':'used',removed_at:left>0?null:now};return {before:row.item,after:after}});
+  Promise.allSettled(jobs.map(function(j){return conditionalCookWrite(j.before,j.after)})).then(function(results){
+    if(epoch!==recipeDataEpoch)return;
+    var success=jobs.filter(function(j,i){var r=results[i];return r.status==='fulfilled'&&!r.value.error&&Array.isArray(r.value.data)&&r.value.data.length===1});
+    success.forEach(function(j){clearTimeout(qtyTimers[j.before.id]);delete pendingQty[j.before.id];applyLocal(j.before.id,{qty:j.after.qty,status:j.after.status,removedAt:j.after.removed_at},j.before,true)});
+    cacheSave();render();cookBusy=false;$('cook-close').disabled=false;
+    if(success.length){undoStack={cooked:true,entries:success};restockStack=null;showToast(success.length+' Lagerartikel angepasst',false,false)}
+    if(success.length===jobs.length){closeCook();refetch();return}
+    cookLocked=true;updateCookButton();
+    $('cook-error').textContent=(success.length?'Bereits entnommen: '+success.map(function(j){return j.before.name}).join(', ')+'. ':'')+'Einige Artikel wurden zwischenzeitlich geändert oder konnten nicht gespeichert werden. Schließe diese Ansicht und prüfe den aktuellen Bestand, bevor du erneut entnimmst.';
+    refetch();
+  });
+});
+function undoCook(entries){
+  var epoch=recipeDataEpoch;
+  Promise.allSettled(entries.map(function(j){return conditionalCookWrite({id:j.before.id,qty:j.after.qty,status:j.after.status,unit:j.before.unit},{qty:j.before.qty,status:'in',removed_at:null})})).then(function(results){
+    if(epoch!==recipeDataEpoch)return;var count=0;
+    entries.forEach(function(j,i){var r=results[i];if(r.status==='fulfilled'&&!r.value.error&&Array.isArray(r.value.data)&&r.value.data.length===1){count++;applyLocal(j.before.id,{qty:j.before.qty,status:'in',removedAt:null},j.before,true)}});
+    cacheSave();render();refetch();showToast(count===entries.length?'Entnahme rückgängig gemacht':count+' von '+entries.length+' Artikeln wiederhergestellt. Geänderte Artikel bitte im Lager prüfen.',true,false);
+  });
+}
 
 function markBought(it){
   clearTimeout(qtyTimers[it.id]);var q=qtyOf(it);delete pendingQty[it.id];
@@ -1039,6 +1137,7 @@ function removeItems(list,label){
 function undo(){
   if(!undoStack)return;
   var s=undoStack;undoStack=null;restockStack=null;hideToast();
+  if(s.cooked){undoCook(s.entries);return}
   store.restore(s);
 }
 function showToast(text,noUndo,canRestock){
