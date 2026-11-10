@@ -757,6 +757,7 @@ function renderRecipes(){
   $("list").innerHTML=html;
 }
 function renderMealPlan(){
+  var selected={};Array.prototype.forEach.call($("list").querySelectorAll("[data-plan-select]"),function(el){selected[el.dataset.planSelect]=el.value});
   var dates=planWeekDates(),start=localISO(dates[0]),end=localISO(dates[6]);
   var dateFmt=new Intl.DateTimeFormat("de-AT",{day:"numeric",month:"short"});
   var weekLabel=dateFmt.format(dates[0])+" – "+dateFmt.format(dates[6])+" "+dates[6].getFullYear();
@@ -773,7 +774,8 @@ function renderMealPlan(){
       html+='<ul class="plan-picks">'+assigned.map(function(x){return '<li><span>'+esc(x.recipe_name)+'</span><button type="button" data-plan-action="remove" data-date="'+iso+'" data-recipe="'+esc(x.recipe_name)+'" aria-label="'+esc(x.recipe_name)+' entfernen"'+(mealPlanBusy?" disabled":"")+'>×</button></li>'}).join("")+'</ul>';
     }else html+='<p class="plan-empty">Noch kein Rezept eingetragen.</p>';
     if(recipes.length){
-      html+='<div class="plan-add"><select aria-label="Rezept für '+esc(dayTitle)+'" data-plan-select="'+iso+'"><option value="">Rezept auswählen …</option>'+recipes.map(function(r){return '<option value="'+esc(r.name)+'">'+esc(r.name)+'</option>'}).join("")+'</select><button class="pillbtn" type="button" data-plan-action="add" data-date="'+iso+'"'+(mealPlanBusy?" disabled":"")+'>Hinzufügen</button></div>';
+      var names=recipes.map(function(r){return r.name}).filter(function(name,i,all){return all.indexOf(name)===i&&!assigned.some(function(x){return x.recipe_name===name})});
+      html+='<div class="plan-add"><select aria-label="Rezept für '+esc(dayTitle)+'" data-plan-select="'+iso+'"><option value="">Rezept auswählen …</option>'+names.map(function(name){return '<option value="'+esc(name)+'"'+(selected[iso]===name?' selected':'')+'>'+esc(name)+'</option>'}).join("")+'</select><button class="pillbtn" type="button" data-plan-action="add" data-date="'+iso+'"'+(mealPlanBusy?" disabled":"")+'>Hinzufügen</button></div>';
     }else html+='<button class="pillbtn" type="button" data-plan-action="recipes">Rezepte öffnen</button>';
     html+='</section>';
   });
