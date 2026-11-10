@@ -8,6 +8,7 @@ Gemeinsames Gedächtnis für alle, die an der App arbeiten (Simon, Claude, ChatG
 - Supabase-Projekt "Urlaubsapp" (wpxoddfaczbhxnmfidoj), enthält auch Daten einer anderen App: nur `vorrat_*` und die Funktion `scan-receipt` anfassen
 - Mehrere Haushalte pro Konto, Umschalter im Haushalt-Menü
 - Foto-Scan über Edge Function `scan-receipt` mit Gemini (Modell gemini-3.5-flash-lite)
+- `supabase/functions/scan-receipt/index.ts` entspricht unverändert der deployten Version 10; Verify JWT ist aktiv
 
 ## Datenbank
 Tabellen: vorrat_households, vorrat_members (mehrere Zeilen pro Konto möglich), vorrat_active, vorrat_invites, vorrat_items, vorrat_products (PK household_id + key). Alle mit RLS: sichtbar nur, wenn household_id = vorrat_my_household().
@@ -22,7 +23,7 @@ Item-Status: "in" Lager, "list" Einkaufsliste, "used"/"gone" entnommen bzw. übe
 
 ## Offene Punkte
 - Gemini-Prompt (`const prompt =` in scan-receipt) verbessern, sobald Simon falsch gelesene Beispiele sammelt
-- Lokale Kopie supabase/functions/scan-receipt/index.ts ist nicht auf dem Stand der deployten Funktion, im Zweifel gilt die deployte
 
 ## Verlauf
 - 2026-11-10 (Claude): Mehrere Haushalte pro Konto (Datenbank-Migration + Umschalter), Cache v6, bestehende Daten in Haushalt "Unser Haushalt" übernommen
+- 2026-11-10 (ChatGPT): Deployte `scan-receipt`-Edge-Function Version 10 unverändert unter `supabase/functions/scan-receipt/index.ts` abgelegt; Übergabe aktualisiert, veralteten offenen Punkt entfernt
