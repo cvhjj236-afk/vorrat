@@ -1043,10 +1043,15 @@ function suggestRecipes(){
   if(!available.length){recipeError="Dein Lager ist leer. Trag zuerst Artikel ein.";render();return}
   recipeBusy=true;recipeError="";render();
   sb.functions.invoke("scan-receipt",{body:{mode:"recipes",ingredients:available}}).then(function(r){
-    if(r.error||!r.data||r.data.error){recipeError="Rezeptideen konnten gerade nicht geladen werden. Versuch es später noch einmal.";return}
+    if(r.error||!r.data||r.data.error){
+      var base="Rezeptideen konnten gerade nicht geladen werden. Versuch es später noch einmal.";
+      var head=r.error&&r.error.context&&r.error.context.status?"HTTP "+r.error.context.status:(r.error&&r.error.name)||"";
+      var body=r.data&&r.data.error?Promise.resolve(String(r.data.error)):(r.error&&r.error.context&&typeof r.error.context.text==="function"?r.error.context.text().catch(function(){return ""}):Promise.resolve(r.error&&r.error.message||""));
+      return body.then(function(t){recipeError=base+" [Fehlercode: "+[head,String(t||"").slice(0,300)].filter(Boolean).join(" · ")+"]"});
+    }
     recipeSuggestions=Array.isArray(r.data.recipes)?r.data.recipes.filter(function(x){return x&&str(x.name)&&Array.isArray(x.ingredients)}).slice(0,6):[];
     if(!recipeSuggestions.length)recipeError="Die KI hat keine Rezeptideen zurückgegeben.";
-  },function(){recipeError="Keine Verbindung zur KI. Bitte versuch es noch einmal."}).then(function(){recipeBusy=false;render()});
+  },function(e){recipeError="Keine Verbindung zur KI. Bitte versuch es noch einmal. [Fehlercode: "+String(e&&e.message||e).slice(0,200)+"]"}).then(function(){recipeBusy=false;render()});
 }
 $("recipe-add-ingredient").addEventListener("click",function(){addRecipeIngredient({})});
 $("recipe-ingredient-editor").addEventListener("click",function(e){var b=e.target.closest("[data-ri-remove]");if(b)b.parentNode.remove()});
