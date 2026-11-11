@@ -855,9 +855,9 @@ $("hofer-results").addEventListener("click",function(e){
   var same=items.find(function(i){return i.status==="list"&&str(i.name).toLowerCase()===name.toLowerCase()&&str(i.shop)==="HOFER"&&str(i.unit)==="Pkg"});
   if(same){
     clearTimeout(qtyTimers[same.id]);delete pendingQty[same.id];
-    store.patch(same.id,{qty:Math.round((qtyOf(same)+1)*100)/100});
+    store.patch(same.id,{qty:Math.round((qtyOf(same)+1)*100)/100,price:Number(offer.price)>0?Math.round(((num(same.price)||0)+Number(offer.price))*100)/100:same.price});
   }else{
-    store.add(newId(),{status:"list",removedAt:null,boughtAt:new Date().toISOString(),purchase:newId(),name:name,qty:1,unit:"Pkg",loc:"Vorratsschrank",cat:cat,mhd:null,price:null,shop:"HOFER"});
+    store.add(newId(),{status:"list",removedAt:null,boughtAt:new Date().toISOString(),purchase:newId(),name:name,qty:1,unit:"Pkg",loc:"Vorratsschrank",cat:cat,mhd:null,price:Number(offer.price)>0?Math.round(Number(offer.price)*100)/100:null,shop:"HOFER"});
   }
   store.product(productKey(name),{name:name,unit:"Pkg",loc:"Vorratsschrank",cat:cat,shop:"HOFER"});
   hoferAdded[offer.id]=(hoferAdded[offer.id]||0)+1;
@@ -1193,7 +1193,8 @@ function markBought(it){
     store.patch(same.id,{qty:Math.round((qtyOf(same)+q)*100)/100,shop:str(it.shop)||same.shop||null});
     store.patch(it.id,{status:"gone",removedAt:now});
   }else{
-    store.patch(it.id,{status:"in",qty:q,boughtAt:now,removedAt:null,purchase:newId()});
+    store.add(newId(),{status:"in",removedAt:null,boughtAt:now,purchase:newId(),name:it.name,qty:q,unit:it.unit,loc:it.loc,cat:it.cat,mhd:it.mhd||null,price:it.price==null?null:it.price,shop:it.shop||null});
+    store.patch(it.id,{status:"gone",removedAt:now});
   }
   undoStack=null;showToast("„"+str(it.name)+"“ liegt jetzt im Lager",true);
 }
