@@ -609,7 +609,7 @@ function startData(){
   });
 }
 function stopData(){
-  hoferEpoch++;hoferOffers=[];hoferLoading=false;hoferError="";$("hofer-scrim").hidden=true;
+  hoferEpoch++;hoferAdded={};hoferOffers=[];hoferLoading=false;hoferError="";$("hofer-scrim").hidden=true;
   closeCook(true);
   recipeDataEpoch++;recipesLoaded=false;recipeLoadError="";recipeFilter="saved";recipeSaving=false;recipeFavoriteBusy="";closeRecipeEditor();
   recipeCategory="all";planPickerCategory="all";
@@ -822,7 +822,7 @@ function renderHofer(){
   $("hofer-test").hidden=!hoferOffers.some(function(o){return o.test_mode});
   $("hofer-status").textContent=hoferLoading?"Lade gespeicherte Angebote …":hoferError||(!hoferOffers.length?"Noch keine freigegebenen Angebote verfügbar.":rows.length+" passende Angebote");
   $("hofer-reload").disabled=hoferLoading;
-  $("hofer-results").innerHTML=rows.map(function(o){return '<section class="group"><div class="hofer-card"><h3>'+esc(o.name)+'</h3><p>'+esc([o.brand,o.quantity,o.category].filter(Boolean).join(" · "))+'</p><p><strong>'+esc(fmtEur(Number(o.price)))+'</strong>'+(o.unit_price?' · '+esc(o.unit_price):'')+'</p><p>'+(o.valid_from>today?'Ab '+esc(fmtDate(o.valid_from)):'Gültig')+' bis '+esc(fmtDate(o.valid_to))+'</p>'+(o.conditions?'<p>'+esc(o.conditions)+'</p>':'')+(o.test_mode?'<p>Testausgabe · erste 5 Seiten</p>':'')+'<p><a href="'+esc(o.source_url+'/page/'+o.page)+'" target="_blank" rel="noopener noreferrer">Flugblatt · Seite '+esc(o.page)+'</a></p><button class="pillbtn" type="button" data-hofer-id="'+esc(o.id)+'">Auf die Einkaufsliste</button></div></section>'}).join("");
+  $("hofer-results").innerHTML=rows.map(function(o){return '<section class="group"><div class="hofer-card"><h3>'+esc(o.name)+'</h3><p>'+esc([o.brand,o.quantity,o.category].filter(Boolean).join(" · "))+'</p><p><strong>'+esc(fmtEur(Number(o.price)))+'</strong>'+(o.unit_price?' · '+esc(o.unit_price):'')+'</p><p>'+(o.valid_from>today?'Ab '+esc(fmtDate(o.valid_from)):'Gültig')+' bis '+esc(fmtDate(o.valid_to))+'</p>'+(o.conditions?'<p>'+esc(o.conditions)+'</p>':'')+(o.test_mode?'<p>Testausgabe · erste 5 Seiten</p>':'')+'<p><a href="'+esc(o.source_url+'/page/'+o.page)+'" target="_blank" rel="noopener noreferrer">Flugblatt · Seite '+esc(o.page)+'</a></p><button class="pillbtn" type="button" data-hofer-id="'+esc(o.id)+'">'+(hoferAdded[o.id]?"✓ "+hoferAdded[o.id]+"× auf der Liste · noch eins":"Auf die Einkaufsliste")+'</button></div></section>'}).join("");
 }
 function loadHofer(){
   if(!sb||hoferLoading)return;
@@ -844,13 +844,25 @@ $("hofer-query").addEventListener("input",renderHofer);
 $("hofer-category").addEventListener("change",renderHofer);
 $("hofer-current").addEventListener("change",renderHofer);
 $("hofer-scrim").addEventListener("click",function(e){if(e.target===$("hofer-scrim"))$("hofer-close").click()});
+var hoferAdded={};
+/* Direkt auf die Einkaufsliste setzen: kein Formular, keine Tastatur, Hofer-Ansicht bleibt offen. */
 $("hofer-results").addEventListener("click",function(e){
   var button=e.target.closest("[data-hofer-id]");if(!button)return;
   var offer=hoferOffers.find(function(o){return o.id===button.dataset.hoferId});if(!offer)return;
   var catMap={"Obst":"Obst & Gemüse","Gemüse":"Obst & Gemüse","Fleisch & Wurst":"Fleisch & Fisch","Fisch & Meeresfrüchte":"Fleisch & Fisch","Reis, Nudeln & Trockenwaren":"Trockenware","Konserven, Gläser & Saucen":"Konserven & Gläser","Tiefkühlprodukte":"Tiefkühlkost"};
-  $("hofer-scrim").hidden=true;view="list";savePref();render();openSheet(null);
-  $("f-name").value=([offer.brand,offer.name].filter(Boolean).join(" ")+(offer.quantity?" ("+offer.quantity+")":"")).slice(0,80);
-  $("f-qty").value="1";fill($("f-unit"),UNITS,"Pkg");fill($("f-cat"),CATS,catMap[offer.category]||offer.category);$("f-shop").value="HOFER";
+  var cat=catMap[offer.category]||offer.category;if(CATS.indexOf(cat)<0)cat="Sonstiges";
+  var name=([offer.brand,offer.name].filter(Boolean).join(" ")+(offer.quantity?" ("+offer.quantity+")":"")).slice(0,80);
+  var same=items.find(function(i){return i.status==="list"&&str(i.name).toLowerCase()===name.toLowerCase()&&str(i.shop)==="HOFER"&&str(i.unit)==="Pkg"});
+  if(same){
+    clearTimeout(qtyTimers[same.id]);delete pendingQty[same.id];
+    store.patch(same.id,{qty:Math.round((qtyOf(same)+1)*100)/100});
+  }else{
+    store.add(newId(),{status:"list",removedAt:null,boughtAt:new Date().toISOString(),purchase:newId(),name:name,qty:1,unit:"Pkg",loc:"Vorratsschrank",cat:cat,mhd:null,price:null,shop:"HOFER"});
+  }
+  store.product(productKey(name),{name:name,unit:"Pkg",loc:"Vorratsschrank",cat:cat,shop:"HOFER"});
+  hoferAdded[offer.id]=(hoferAdded[offer.id]||0)+1;
+  button.textContent="✓ "+hoferAdded[offer.id]+"× auf der Liste · noch eins";
+  $("hofer-status").textContent="„"+name+"“ steht auf der Einkaufsliste";
 });
 
 /* ---------- Rezepte ---------- */
