@@ -294,7 +294,7 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     </div>
     <p class="note" id="note" hidden></p>
   </header>
-  <button class="pillbtn" id="hofer-open" type="button" hidden>HOFER-Aktionen ansehen</button>
+  <button class="pillbtn" id="hofer-open" type="button" hidden>Prospekt-Aktionen ansehen</button>
   <main id="list"></main>
 </div>
 
@@ -308,7 +308,8 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 
 <div class="scrim" id="hofer-scrim" hidden>
   <div class="sheet hofer-sheet" role="dialog" aria-modal="true" aria-labelledby="hofer-title">
-    <div class="sheet-head"><h2 id="hofer-title">HOFER-Aktionen</h2><button class="x" id="hofer-close" type="button">Schließen</button></div>
+    <div class="sheet-head"><h2 id="hofer-title">Prospekt-Aktionen</h2><button class="x" id="hofer-close" type="button">Schließen</button></div>
+    <div class="f wide"><label for="hofer-src">Geschäft</label><select id="hofer-src"><option value="HOFER">HOFER</option><option value="Lidl">Lidl</option></select></div>
     <div class="f wide"><label for="hofer-query">Produkt suchen</label><input id="hofer-query" type="search" placeholder="z. B. Kartoffeln"></div>
     <div class="f wide"><label for="hofer-category">Kategorie</label><select id="hofer-category"><option value="">Alle Kategorien</option></select></div>
     <label><input id="hofer-current" type="checkbox"> Nur jetzt gültige Aktionen</label>
@@ -473,7 +474,7 @@ function newId(){return "i"+Date.now().toString(36)+Math.random().toString(36).s
 var items=[];           // status "in" (Lager) und "list" (Einkaufsliste)
 var products={};        // key -> {name,unit,cat,loc,shop}
 var recipes=[],recipeSuggestions=[],recipeBusy=false,recipeError="";
-var hoferOffers=[],hoferEpoch=0,hoferLoading=false,hoferError="";
+var hoferSrc="HOFER",hoferOffers=[],hoferEpoch=0,hoferLoading=false,hoferError="";
 var recipeFilter="saved",recipesLoaded=false,recipeLoadError="",recipeSaving=false,recipeFavoriteBusy="",recipeDataEpoch=0;
 var RECIPE_CATEGORIES=["Frühstück","Hauptgerichte","Suppen & Eintöpfe","Salate & Beilagen","Snacks & Kleinigkeiten","Nachspeisen & Backen"],recipeCategory="all",planPickerCategory="all";
 var cookRows=[],cookWarnings=[],cookBusy=false,cookLocked=false,cookEpoch=0;
@@ -827,7 +828,7 @@ function renderHofer(){
 function loadHofer(){
   if(!sb||hoferLoading)return;
   var epoch=hoferEpoch;hoferLoading=true;hoferError="";renderHofer();
-  sb.rpc("vorrat_hofer_catalog").then(function(r){
+  sb.rpc(hoferSrc==="Lidl"?"vorrat_lidl_catalog":"vorrat_hofer_catalog").then(function(r){
     if(epoch!==hoferEpoch)return;hoferLoading=false;
     if(r.error){hoferError="Die Angebote konnten nicht geladen werden. Bitte versuch es erneut.";renderHofer();return}
     hoferOffers=Array.isArray(r.data)?r.data:[];
@@ -840,6 +841,7 @@ function loadHofer(){
 $("hofer-open").addEventListener("click",function(){$("hofer-scrim").hidden=false;$("hofer-query").focus();loadHofer()});
 $("hofer-close").addEventListener("click",function(){$("hofer-scrim").hidden=true;$("hofer-open").focus()});
 $("hofer-reload").addEventListener("click",loadHofer);
+$("hofer-src").addEventListener("change",function(){hoferSrc=$("hofer-src").value;hoferEpoch++;hoferLoading=false;hoferOffers=[];hoferAdded={};$("hofer-category").value="";renderHofer();loadHofer()});
 $("hofer-query").addEventListener("input",renderHofer);
 $("hofer-category").addEventListener("change",renderHofer);
 $("hofer-current").addEventListener("change",renderHofer);
@@ -852,14 +854,14 @@ $("hofer-results").addEventListener("click",function(e){
   var catMap={"Obst":"Obst & Gemüse","Gemüse":"Obst & Gemüse","Fleisch & Wurst":"Fleisch & Fisch","Fisch & Meeresfrüchte":"Fleisch & Fisch","Reis, Nudeln & Trockenwaren":"Trockenware","Konserven, Gläser & Saucen":"Konserven & Gläser","Tiefkühlprodukte":"Tiefkühlkost"};
   var cat=catMap[offer.category]||offer.category;if(CATS.indexOf(cat)<0)cat="Sonstiges";
   var name=([offer.brand,offer.name].filter(Boolean).join(" ")+(offer.quantity?" ("+offer.quantity+")":"")).slice(0,80);
-  var same=items.find(function(i){return i.status==="list"&&str(i.name).toLowerCase()===name.toLowerCase()&&str(i.shop)==="HOFER"&&str(i.unit)==="Pkg"});
+  var same=items.find(function(i){return i.status==="list"&&str(i.name).toLowerCase()===name.toLowerCase()&&str(i.shop)===hoferSrc&&str(i.unit)==="Pkg"});
   if(same){
     clearTimeout(qtyTimers[same.id]);delete pendingQty[same.id];
     store.patch(same.id,{qty:Math.round((qtyOf(same)+1)*100)/100,price:Number(offer.price)>0?Math.round(((num(same.price)||0)+Number(offer.price))*100)/100:same.price});
   }else{
-    store.add(newId(),{status:"list",removedAt:null,boughtAt:new Date().toISOString(),purchase:newId(),name:name,qty:1,unit:"Pkg",loc:"Vorratsschrank",cat:cat,mhd:null,price:Number(offer.price)>0?Math.round(Number(offer.price)*100)/100:null,shop:"HOFER"});
+    store.add(newId(),{status:"list",removedAt:null,boughtAt:new Date().toISOString(),purchase:newId(),name:name,qty:1,unit:"Pkg",loc:"Vorratsschrank",cat:cat,mhd:null,price:Number(offer.price)>0?Math.round(Number(offer.price)*100)/100:null,shop:hoferSrc});
   }
-  store.product(productKey(name),{name:name,unit:"Pkg",loc:"Vorratsschrank",cat:cat,shop:"HOFER"});
+  store.product(productKey(name),{name:name,unit:"Pkg",loc:"Vorratsschrank",cat:cat,shop:hoferSrc});
   hoferAdded[offer.id]=(hoferAdded[offer.id]||0)+1;
   button.textContent="✓ "+hoferAdded[offer.id]+"× auf der Liste · noch eins";
   $("hofer-status").textContent="„"+name+"“ steht auf der Einkaufsliste";
