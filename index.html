@@ -295,6 +295,7 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     <p class="note" id="note" hidden></p>
   </header>
   <button class="pillbtn" id="hofer-open" type="button" hidden>Prospekt-Aktionen ansehen</button>
+  <button class="pillbtn" id="push-open" type="button" hidden>Erinnerung senden</button>
   <main id="list"></main>
 </div>
 
@@ -306,6 +307,25 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   <button type="button" id="undo">Rückgängig</button>
 </div>
 
+<div class="scrim" id="push-scrim" hidden>
+  <div class="sheet hofer-sheet" role="dialog" aria-modal="true" aria-labelledby="push-title">
+    <div class="sheet-head"><h2 id="push-title">Erinnerung senden</h2><button class="x" id="push-close" type="button">Schließen</button></div>
+    <p id="push-device" role="status"></p>
+    <button class="pillbtn" id="push-enable" type="button">Benachrichtigungen auf diesem Gerät aktivieren</button>
+    <div class="f wide"><label for="push-to">An</label><select id="push-to"></select></div>
+    <div class="f wide"><label for="push-ttl">Titel</label><input id="push-ttl" type="text" maxlength="80" value="Einkaufen"></div>
+    <div class="f wide"><label for="push-body">Nachricht (optional)</label><textarea id="push-body" rows="2" maxlength="500"></textarea></div>
+    <div class="f wide"><label>Artikel von der Einkaufsliste anhängen</label><div id="push-items"></div></div>
+    <label><input id="push-all" type="checkbox"> Gesamte aktuelle Einkaufsliste anhängen (beim Senden)</label>
+    <div class="f wide"><label for="push-rep">Wiederholung</label><select id="push-rep"><option value="once">Einmalig</option><option value="daily">Täglich</option></select></div>
+    <div class="f wide" id="push-date-wrap"><label for="push-date">Datum</label><input id="push-date" type="date"></div>
+    <div class="f wide"><label for="push-time">Uhrzeit</label><input id="push-time" type="time" value="17:00"></div>
+    <button class="pillbtn" id="push-save" type="button">Erinnerung speichern</button>
+    <p id="push-status" role="status"></p>
+    <h3>Geplante Erinnerungen</h3>
+    <div id="push-list"></div>
+  </div>
+</div>
 <div class="scrim" id="hofer-scrim" hidden>
   <div class="sheet hofer-sheet" role="dialog" aria-modal="true" aria-labelledby="hofer-title">
     <div class="sheet-head"><h2 id="hofer-title">Prospekt-Aktionen</h2><button class="x" id="hofer-close" type="button">Schließen</button></div>
@@ -729,7 +749,7 @@ function render(){
   var soon=inStock.filter(function(i){var d=daysUntil(str(i.mhd));return d!=null&&d<=3}).length;
   var worth=inStock.reduce(function(s,i){return s+(num(i.price)||0)},0);
   var st=$("stats"),isList=view==="list",isRecipes=view==="recipes",isPlan=view==="plan";
-  $("hofer-open").hidden=!isList;
+  $("hofer-open").hidden=!isList;$("push-open").hidden=!isList;
   if(!loaded){st.textContent="Lade Bestand …"}
   else if(isList){st.innerHTML="<b>"+onList.length+"</b> "+(onList.length===1?"Artikel":"Artikel")+" auf der Einkaufsliste"}
   else if(isRecipes){st.innerHTML="<b>"+recipes.length+"</b> gespeicherte "+(recipes.length===1?"Rezept":"Rezepte")}
@@ -865,6 +885,89 @@ $("hofer-results").addEventListener("click",function(e){
   hoferAdded[offer.id]=(hoferAdded[offer.id]||0)+1;
   button.textContent="✓ "+hoferAdded[offer.id]+"× auf der Liste · noch eins";
   $("hofer-status").textContent="„"+name+"“ steht auf der Einkaufsliste";
+});
+
+
+/* ---------- Push-Erinnerungen ---------- */
+var VAPID_PUBLIC="BNTuCpC5En2nXeAcmh9dJHGKmAL-h6umEmnh5zvnSVNPQFhLpFtsugFoWC50zjMBU80w3mosQLNQBeYEj-yxMRs";
+var pushReady=false;
+function pushSupported(){return "serviceWorker" in navigator&&"PushManager" in window&&"Notification" in window}
+function pushB64(b){var p="=".repeat((4-b.length%4)%4),s=(b+p).replace(/-/g,"+").replace(/_/g,"/"),r=atob(s),o=new Uint8Array(r.length);for(var i=0;i<r.length;i++)o[i]=r.charCodeAt(i);return o}
+function pushAb(buf){var a=new Uint8Array(buf),s="";for(var i=0;i<a.length;i++)s+=String.fromCharCode(a[i]);return btoa(s)}
+function pushDeviceState(){
+  var el=$("push-device"),btn=$("push-enable");
+  if(!pushSupported()){el.textContent="Dieses Gerät/dieser Browser unterstützt keine Push-Nachrichten. Auf dem iPhone: App zum Home-Bildschirm hinzufügen und von dort öffnen.";btn.hidden=true;return}
+  btn.hidden=false;
+  if(Notification.permission==="denied"){el.textContent="Benachrichtigungen sind für diese App blockiert (Geräte-Einstellungen).";btn.hidden=true;return}
+  navigator.serviceWorker.ready.then(function(reg){return reg.pushManager.getSubscription()}).then(function(sub){
+    el.textContent=sub&&Notification.permission==="granted"?"Dieses Gerät erhält Erinnerungen.":"Dieses Gerät erhält noch keine Erinnerungen.";
+    btn.textContent=sub&&Notification.permission==="granted"?"Gerät neu registrieren":"Benachrichtigungen auf diesem Gerät aktivieren";
+  }).catch(function(){});
+}
+function pushEnable(){
+  $("push-status").textContent="";
+  if(!pushSupported())return;
+  Notification.requestPermission().then(function(p){
+    if(p!=="granted"){$("push-status").textContent="Ohne Erlaubnis kann diese App nichts senden.";return null}
+    return navigator.serviceWorker.ready.then(function(reg){
+      return reg.pushManager.getSubscription().then(function(old){return old?old.unsubscribe():true}).then(function(){
+        return reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:pushB64(VAPID_PUBLIC)});
+      });
+    }).then(function(sub){
+      var j=sub.toJSON();
+      return sb.rpc("vorrat_push_save_sub",{p_endpoint:j.endpoint,p_p256dh:j.keys.p256dh,p_auth:j.keys.auth}).then(function(r){
+        $("push-status").textContent=r.data===true?"Gerät registriert.":"Registrierung hat nicht geklappt.";pushLoad();pushDeviceState();
+      });
+    });
+  }).catch(function(e){$("push-status").textContent="Fehler: "+String(e&&e.message||e).slice(0,160)});
+}
+function pushLoad(){
+  sb.rpc("vorrat_push_recipients").then(function(r){
+    var rows=Array.isArray(r.data)?r.data:[],cur=$("push-to").value;
+    $("push-to").innerHTML=rows.map(function(x){return '<option value="'+esc(x.user_id)+'">'+esc(x.label+(x.me?" (ich)":""))+(x.devices?"":" – noch kein Gerät")+'</option>'}).join("");
+    if(cur)$("push-to").value=cur;
+  });
+  sb.from("vorrat_push_reminders").select("id,title,body,item_names,include_list,repeat,send_at,recipient_id,last_status").eq("active",true).order("send_at").then(function(r){
+    var rows=r.data||[];
+    $("push-list").innerHTML=rows.length?rows.map(function(x){
+      var t=new Date(x.send_at).toLocaleString("de-AT",{weekday:"short",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+      var extra=(x.item_names&&x.item_names.length?x.item_names.length+" Artikel":"")+(x.include_list?(x.item_names&&x.item_names.length?" + ":"")+"ganze Liste":"");
+      return '<section class="group"><div class="hofer-card"><h3>'+esc(x.title)+'</h3><p>'+esc(t)+(x.repeat==="daily"?" · täglich":" · einmalig")+(extra?" · "+esc(extra):"")+'</p><button class="pillbtn" type="button" data-push-del="'+esc(x.id)+'">Löschen</button></div></section>'
+    }).join(""):"<p>Keine geplanten Erinnerungen.</p>";
+  });
+}
+function pushOpen(){
+  $("push-items").innerHTML=shopping().map(function(i){return '<label style="display:block"><input type="checkbox" data-push-item="'+esc(i.name)+'"> '+esc(i.name)+(qtyOf(i)!==1?" ("+esc(String(qtyOf(i)))+")":"")+'</label>'}).join("")||"<p>Die Einkaufsliste ist leer.</p>";
+  $("push-date").value=todayISO();$("push-date").min=todayISO();
+  $("push-date-wrap").hidden=$("push-rep").value!=="once";
+  $("push-scrim").hidden=false;pushDeviceState();pushLoad();
+}
+function pushSave(){
+  var items=[].slice.call(document.querySelectorAll("[data-push-item]:checked")).map(function(c){return c.getAttribute("data-push-item")});
+  var title=$("push-ttl").value.trim(),body=$("push-body").value.trim(),all=$("push-all").checked;
+  if(!$("push-to").value){$("push-status").textContent="Kein Empfänger verfügbar.";return}
+  if(!title){$("push-status").textContent="Bitte einen Titel eingeben.";return}
+  if(!body&&!items.length&&!all){$("push-status").textContent="Schreib eine Nachricht oder wähl Artikel aus.";return}
+  if(!$("push-time").value){$("push-status").textContent="Bitte eine Uhrzeit wählen.";return}
+  var once=$("push-rep").value==="once";
+  if(once&&!$("push-date").value){$("push-status").textContent="Bitte ein Datum wählen.";return}
+  $("push-save").disabled=true;
+  sb.rpc("vorrat_push_save_reminder",{p_recipient:$("push-to").value,p_title:title,p_body:body,p_items:items,p_include_list:all,p_repeat:$("push-rep").value,p_date:once?$("push-date").value:null,p_time:$("push-time").value}).then(function(r){
+    $("push-save").disabled=false;
+    if(r.error){$("push-status").textContent=/past/.test(r.error.message||"")?"Der Zeitpunkt liegt in der Vergangenheit.":"Speichern hat nicht geklappt.";return}
+    $("push-status").textContent="Erinnerung gespeichert.";$("push-body").value="";$("push-all").checked=false;
+    [].forEach.call(document.querySelectorAll("[data-push-item]"),function(c){c.checked=false});pushLoad();
+  },function(){$("push-save").disabled=false;$("push-status").textContent="Keine Verbindung."});
+}
+$("push-open").addEventListener("click",pushOpen);
+$("push-close").addEventListener("click",function(){$("push-scrim").hidden=true;$("push-open").focus()});
+$("push-scrim").addEventListener("click",function(e){if(e.target===$("push-scrim"))$("push-close").click()});
+$("push-enable").addEventListener("click",pushEnable);
+$("push-save").addEventListener("click",pushSave);
+$("push-rep").addEventListener("change",function(){$("push-date-wrap").hidden=$("push-rep").value!=="once"});
+$("push-list").addEventListener("click",function(e){
+  var b=e.target.closest("[data-push-del]");if(!b)return;
+  sb.from("vorrat_push_reminders").delete().eq("id",b.getAttribute("data-push-del")).then(pushLoad);
 });
 
 /* ---------- Rezepte ---------- */
@@ -1309,7 +1412,7 @@ $("close").addEventListener("click",closeSheet);
 $("scrim").addEventListener("click",function(e){if(e.target===$("scrim"))closeSheet()});
 document.addEventListener("keydown",function(e){
   if(e.key!=="Escape")return;
-  if(!$("hofer-scrim").hidden)$("hofer-close").click();else if(!$("scrim").hidden)closeSheet();else if(!$("scrim2").hidden)closeHousehold();
+  if(!$("push-scrim").hidden)$("push-close").click();else if(!$("hofer-scrim").hidden)$("hofer-close").click();else if(!$("scrim").hidden)closeSheet();else if(!$("scrim2").hidden)closeHousehold();
 });
 
 $("f-name").addEventListener("input",function(){
