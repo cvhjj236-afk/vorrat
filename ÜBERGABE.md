@@ -80,3 +80,8 @@ Item-Status: "in" Lager, "list" Einkaufsliste, "used"/"gone" entnommen bzw. übe
 - HOFER-Anzeige in der Einkaufsliste über „HOFER-Aktionen ansehen“ ergänzt. Suche, Kategorien, Filter „Nur jetzt gültige Aktionen“, künftige Angebote mit Ab-Datum, Preis/Menge/Bedingungen und Link zur Flugblattseite. Übernahme öffnet den vorhandenen Listeneditor mit Artikel/Packungsgröße, 1 Pkg, Kategorie und HOFER. Kein Importauslöser in der App.
 - Migration `20261110142955_show_hofer_test_catalog.sql`: angenommene Angebote abgeschlossener Testläufe sind jetzt für Haushaltsmitglieder abrufbar und deutlich als Testausgabe/erste fünf Seiten gekennzeichnet. Vollständig abgeschlossene reguläre Ausgabe hat Vorrang. Ungeklärte Rohangebote bleiben im Backend.
 - Cache v15. JavaScript-Syntax und Browser mit lokalen Testdaten geprüft: Öffnen, Zukunft/aktuell filtern, Kategorie, Suche, Übernahme und Speichern auf Einkaufsliste; 320/390 px ohne horizontalen Überlauf. Keine App-Konsolenfehler. Produktiver Schreib-/Anmeldetest mangels angemeldeter Browsersitzung nicht durchgeführt. Voriger Hinweis „App nur lokal/Cache v14“ ist damit überholt.
+
+## Stand 2026-11-12 (Claude): Prospekt-Zeitplan
+- Prospekte (HOFER + Lidl) laufen NUR wöchentlich: Mittwoch auf Donnerstag ab 0 Uhr Wien, bei Fehlschlag stündlich Retry bis 3:59. Nichts täglich.
+- Migration `20261112120000_flyers_weekly_thursday_night.sql` (in Supabase ausgeführt): `vorrat_*_weekly()` prüft isodow=4, Stunde 0–3, kein nicht-fehlgeschlagener scheduled-Run heute. `scheduled_enabled=true` bei beiden. Cron: `vorrat-hofer-weekly` (0 * * * *), `vorrat-lidl-weekly` (5 * * * *); alte Jobs `vorrat-lidl-daily` entfernt.
+- Standing-Regel von Simon: nach jeder Arbeit Git + ÜBERGABE.md aktualisieren.
