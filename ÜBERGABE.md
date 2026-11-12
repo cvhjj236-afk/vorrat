@@ -85,3 +85,4 @@ Item-Status: "in" Lager, "list" Einkaufsliste, "used"/"gone" entnommen bzw. übe
 - Prospekte (HOFER + Lidl) laufen NUR wöchentlich: Mittwoch auf Donnerstag ab 0 Uhr Wien, bei Fehlschlag stündlich Retry bis 3:59. Nichts täglich.
 - Migration `20261112120000_flyers_weekly_thursday_night.sql` (in Supabase ausgeführt): `vorrat_*_weekly()` prüft isodow=4, Stunde 0–3, kein nicht-fehlgeschlagener scheduled-Run heute. `scheduled_enabled=true` bei beiden. Cron: `vorrat-hofer-weekly` (0 * * * *), `vorrat-lidl-weekly` (5 * * * *); alte Jobs `vorrat-lidl-daily` entfernt.
 - Standing-Regel von Simon: nach jeder Arbeit Git + ÜBERGABE.md aktualisieren.
+- Deployed 2026-11-12: `vorrat-hofer-import` = hofer-3 (core.ts + index.ts, Nachbarseiten-Datum), `scan-receipt` mit 5 statt 3 Retries bei 503/429 (Pause 2/4/6/8/10 s, JWT bleibt an). Noch KEIN neuer HOFER-Vollauf gestartet; nächster automatischer Lauf Do 19.11. ab 0 Uhr (neuer Fingerprint, da neue Version).
