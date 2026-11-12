@@ -1,5 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
-import { bootstrapData, sourceUrl, imageUrl, sha256, validateOffers, promptForPage, RESPONSE_SCHEMA, EXTRACT_VERSION } from './core.ts';
+import { bootstrapData, sourceUrl, imageUrl, sha256, validateOffers, pickFallback, promptForPage, RESPONSE_SCHEMA, EXTRACT_VERSION } from './core.ts';
 
 declare const EdgeRuntime: { waitUntil(task: Promise<unknown>): void };
 const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
@@ -91,6 +91,7 @@ function base64(bytes: Uint8Array): string {
 async function readPage(run: any) {
   const page = run.pages[run.pages_done];
   if (!page || (run.test_mode && page.number > 5)) throw new ImportError('Seite liegt außerhalb des freigegebenen Umfangs.');
+  if (page.number === 1) return { page: { number: 1, image_sha256: await sha256('cover-skipped'), offers: [], review: [], usage: {} } };
   const bytes = await download(imageUrl(page.image_url), 8_000_000);
   if (bytes[0] !== 0xff || bytes[1] !== 0xd8) throw new ImportError('Seitenquelle ist kein JPEG.');
   const key = Deno.env.get('GOOGLE_API_KEY');
@@ -115,7 +116,8 @@ async function readPage(run: any) {
   const content = candidate.content?.parts?.filter((part: any) => !part.thought).map((part: any) => part.text || '').join('');
   const raw = JSON.parse(content || '{}');
   const year = 2000 + Number(run.edition.match(/_(\d{2})_0$/)[1]);
-  const checked = await validateOffers(raw.offers, page.number, year);
+  const prevRows = await sb.from('vorrat_hofer_pages').select('offers').eq('run_id', run.id).lt('page', page.number).order('page', { ascending: false }).limit(8);
+  const checked = await validateOffers(raw.offers, page.number, year, pickFallback((prevRows.data || []).map((r: any) => r.offers)));
   return { page: { number: page.number, image_sha256: await sha256(bytes), ...checked, usage: result.usageMetadata || {} } };
 }
 
