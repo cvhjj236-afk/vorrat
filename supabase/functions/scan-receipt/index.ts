@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
       }),
     });
     let r: Response;
-    try { r = await gen(true); if (r.status === 400) r = await gen(false); for (let i = 0; i < 3 && (r.status === 503 || r.status === 429); i++) { await new Promise((res) => setTimeout(res, 1500 * (i + 1))); r = await gen(true); } }
+    try { r = await gen(true); if (r.status === 400) r = await gen(false); for (let i = 0; i < 5 && (r.status === 503 || r.status === 429); i++) { await new Promise((res) => setTimeout(res, 2000 * (i + 1))); r = await gen(true); } }
     catch (_e) { return json({ error: 'timeout' }, 504); }
     if (!r.ok) { const d = (await r.text()).slice(0, 300); console.error("upstream", r.status, d); return json({ error: "upstream", status: r.status, detail: d }, 502); }
     const out = await r.json();
@@ -127,7 +127,7 @@ Deno.serve(async (req) => {
     }),
   });
   let r: Response;
-  try { r = await gen(true); if (r.status === 400) r = await gen(false); for (let i = 0; i < 3 && (r.status === 503 || r.status === 429); i++) { await new Promise((res) => setTimeout(res, 1500 * (i + 1))); r = await gen(true); } }
+  try { r = await gen(true); if (r.status === 400) r = await gen(false); for (let i = 0; i < 5 && (r.status === 503 || r.status === 429); i++) { await new Promise((res) => setTimeout(res, 2000 * (i + 1))); r = await gen(true); } }
   catch (_e) { return json({ error: 'timeout' }, 504); }
   if (!r.ok) { const d = (await r.text()).slice(0, 300); console.error("upstream", r.status, d); return json({ error: "upstream", status: r.status, detail: d }, 502); }
   const out = await r.json();
