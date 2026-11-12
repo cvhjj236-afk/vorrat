@@ -2,10 +2,10 @@
 
 Gemeinsames Gedächtnis für alle, die an der App arbeiten (Simon, Claude, ChatGPT). Am Anfang jeder Sitzung lesen, nach jeder Arbeit unten einen Eintrag ergänzen.
 
-## Aktueller Stand (2026-11-10)
-- App: index.html, Service-Worker-Cache `vorrat-v15`
+## Aktueller Stand (2026-11-12)
+- App: index.html, Service-Worker-Cache `vorrat-v20`
 - Live: https://cvhjj236-afk.github.io/vorrat/ (Pages aus main, Deploy dauert 1–2 Min.)
-- Supabase-Projekt "Urlaubsapp" (wpxoddfaczbhxnmfidoj), enthält auch Daten einer anderen App: nur `vorrat_*`, `scan-receipt` und den autorisierten HOFER-Import `vorrat-hofer-import` anfassen
+- Supabase-Projekt "Urlaubsapp" (wpxoddfaczbhxnmfidoj), enthält auch Daten einer anderen App: nur `vorrat_*`, `scan-receipt` und die autorisierten Funktionen `vorrat-hofer-import`, `vorrat-lidl-import` und `vorrat-push` anfassen
 - Mehrere Haushalte pro Konto, Umschalter im Haushalt-Menü
 - Foto-Scan über Edge Function `scan-receipt` mit Gemini (Modell gemini-3.5-flash-lite)
 - Eigene Rezepte in `vorrat_recipes`, pro Haushalt mit RLS und Realtime; Feld `favorite` für gemeinsame Haushaltsfavoriten
@@ -32,6 +32,18 @@ Item-Status: "in" Lager, "list" Einkaufsliste, "used"/"gone" entnommen bzw. übe
 ## Offene Punkte
 - Gemini-Prompt (`const prompt =` in scan-receipt) verbessern, sobald Simon falsch gelesene Beispiele sammelt
 - KI-Rezeptideen und MHD-Erkennung mit echten Fotos bzw. Vorratsbeispielen prüfen
+
+## Stand 2026-11-12 (Claude): Importe, Push, UI
+- **HOFER (hofer-3)**: Code in `supabase/functions/vorrat-hofer-import/` ist im Repo, aber NICHT deployt (deployt ist noch hofer-2). Regeln: Angebote ohne Preis fallen weg, nichts wird zurückgehalten außer "Produktname fehlt", "Kategorie unklar", "Preis fehlt"; fehlendes Datum ist egal (Nachbarseite, sonst bis nächsten Mittwoch); Titelseite (Seite 1) wird übersprungen. Vor einem frischen vollen Lauf Simon fragen.
+- **Lidl**: Migration `20261111140000_lidl_import_backend.sql` (Tabellen `vorrat_lidl_*`, RPCs, Cron `vorrat-lidl-daily` stündlich + `vorrat-lidl-worker` 15 s) und Function `vorrat-lidl-import` (deployt, verify_jwt aus). Quelle `https://endpoints.leaflets.schwarz/v4/flyer?flyer_identifier=<slug>`; Lidl-Plus-Preis wird als `price` genommen, `conditions` beginnt dann mit "Lidl Plus". Seite 1 wird übersprungen. Vollauf getestet: 56 Seiten, 184 Angebote, 0 zurückgehalten, ca. 95k Eingabe-/27k Ausgabetokens. `scheduled_enabled` ist noch `false`. Katalog per `vorrat_lidl_catalog()`.
+- **App v16–v20**: HOFER/Lidl-Aktionen werden direkt auf die Einkaufsliste gesetzt, ohne Formular/Tastatur, mit Preis; "Prospekt-Aktionen ansehen" hat die Geschäftsauswahl HOFER/Lidl. "Gekauft" legt jetzt einen NEUEN Lager-Eintrag mit neuer ID an, der Listeneintrag wird `gone`. Rezeptideen zeigen bei Fehlern einen Fehlercode (Ursache war Gemini 503 "high demand", retrybar).
+- **Push-Erinnerungen**: Migration `20261112090000_push_reminders.sql` (`vorrat_push_subs`, `vorrat_push_reminders`, `vorrat_push_dispatch`, RPCs `vorrat_push_recipients/save_sub/save_reminder`, geheime `claim/drop/tick`, Cron `vorrat-push-tick` jede Minute) und Function `vorrat-push` (web-push, verify_jwt aus, Einmal-Token). Secrets `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY` setzt Simon selbst in Supabase (nie in Code oder Chat ausgeben). Öffentlicher Schlüssel steht in index.html (`VAPID_PUBLIC`). Zeiten in Europe/Vienna, "einmalig" oder "täglich". iPhone: nur aus der Homescreen-App. Der Service Worker (`sw.js`) hat `push`/`notificationclick`.
+- **Regeln, die Simon gesetzt hat**: Git und Übergabe immer mitpflegen. Keine Schlüssel/Tokens in Web-Formulare eintragen, das macht Simon selbst. Importe laufen nicht täglich, nur wöchentlich (siehe offene Punkte).
+
+## Offene Punkte (Stand 2026-11-12)
+- Wöchentlicher Lauf für HOFER und Lidl in der Nacht auf Donnerstag (Prospekte erscheinen Mittwochnacht ca. 0 Uhr), noch nicht umgestellt; HOFER-Cron steht bisher auf Mittwoch 15 Uhr, Lidl-Cron läuft stündlich um 15 Uhr und ist wegen `scheduled_enabled=false` inaktiv.
+- hofer-3 deployen und vollen HOFER-Lauf nach Rückfrage starten.
+- `scan-receipt`: bei Gemini-503 stärker wiederholen (z. B. 5-mal über ca. 25 s).
 
 ## Verlauf
 - 2026-11-10 (Claude): Mehrere Haushalte pro Konto (Datenbank-Migration + Umschalter), Cache v6, bestehende Daten in Haushalt "Unser Haushalt" übernommen
