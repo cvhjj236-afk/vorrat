@@ -262,6 +262,48 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .recipe-edit-row input,.recipe-edit-row select{padding:8px 4px}
 }
 @media (min-width:600px){.views{grid-template-columns:repeat(4,minmax(0,1fr));border-radius:999px}}
+
+/* ---- native UX v23 ---- */
+.sheet{padding-top:0;overscroll-behavior:contain}
+.sheet-head{position:sticky;top:0;z-index:3;background:var(--surface);margin:0 -16px 12px;padding:22px 16px 10px;border-bottom:1px solid var(--line)}
+.sheet-head::before{content:"";position:absolute;top:8px;left:50%;width:40px;height:5px;margin-left:-20px;border-radius:3px;background:var(--line)}
+.x{font-size:0;width:36px;height:36px;border-radius:50%;background:var(--bg);text-decoration:none;flex:none;position:relative}
+.x::after{content:"✕";font-size:17px;color:var(--ink);line-height:36px}
+.sheet .sticky-cta{position:sticky;bottom:-22px;margin:12px -16px -22px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:var(--surface);border-top:1px solid var(--line);z-index:2}
+.sheet .sticky-cta>button{width:100%}
+#push-save{width:100%;background:var(--accent);color:var(--accent-ink);border:0;padding:14px;font-size:16px;font-weight:600;border-radius:999px}
+#push-items label,label.chk{display:flex!important;align-items:center;gap:10px;text-transform:none!important;letter-spacing:normal!important;font-size:15px!important;font-weight:400!important;color:var(--ink)!important;padding:6px 0}
+#push-items input,label.chk input{width:20px;height:20px;flex:none}
+#hh-new,#hh-join{background:var(--bg)!important;color:var(--ink)!important;border:1px solid var(--line)!important}
+.menu-wrap{position:relative}
+.menu-pop{position:absolute;right:0;top:44px;z-index:9;min-width:220px;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.18);padding:6px;display:flex;flex-direction:column}
+.menu-pop[hidden]{display:none}
+.menu-pop>button{all:unset;cursor:pointer;padding:12px 14px;border-radius:10px;font-size:16px;color:var(--ink)}
+.menu-pop>button:hover{background:var(--bg)}
+.menu-pop>button[hidden]{display:none}
+.menu-pop>button.danger{color:#b3261e}
+.menu-pop>button:disabled{opacity:.4}
+#menu-btn{width:42px;height:42px;border-radius:50%;font-size:22px;line-height:1;padding:0}
+.empty-group{display:none}
+.hofer-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.hofer-row .hi{flex:1;min-width:0}
+.hofer-row .hn{font-weight:600;overflow-wrap:anywhere}
+.hofer-row .hm{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.hofer-row .hp{font-weight:700;white-space:nowrap}
+.hofer-row .hadd{width:40px;height:40px;border-radius:50%;border:0;background:var(--accent);color:var(--accent-ink);font-size:22px;flex:none}
+.hofer-row .hadd.on{background:var(--accent-soft);color:var(--accent);font-size:15px;font-weight:700}
+.row{touch-action:pan-y;transition:transform .15s}
+.row.swiping{transition:none}
+.done.used{font-size:18px}
+@media (max-width:699px){
+  .wrap{padding-bottom:calc(150px + env(safe-area-inset-bottom))}
+  .views{position:fixed;left:0;right:0;bottom:0;margin:0;z-index:7;grid-template-columns:repeat(4,minmax(0,1fr))!important;border-radius:0!important;gap:0;background:var(--surface);border-top:1px solid var(--line);padding:6px 6px calc(6px + env(safe-area-inset-bottom));box-shadow:0 -4px 16px rgba(0,0,0,.06)}
+  .views button{font-size:12px;padding:8px 2px;border-radius:12px}
+  .fab{bottom:calc(76px + env(safe-area-inset-bottom))}
+  .toast{bottom:calc(140px + env(safe-area-inset-bottom))}
+  header .top h1{font-size:28px}
+  .tools{margin-top:8px}
+}
 @media (prefers-reduced-motion:reduce){ *{transition:none!important} }
 </style>
 </head>
@@ -275,8 +317,12 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
       </div>
       <div class="btns">
       <button class="pillbtn" id="scan" type="button">Foto</button>
-        <button class="pillbtn" id="hh-open" type="button">Haushalt</button>
-        <button class="clear-all" id="clear-all" type="button" disabled>Lager leeren</button>
+        <div class="menu-wrap"><button class="pillbtn" id="menu-btn" type="button" aria-label="Mehr" aria-haspopup="true" aria-expanded="false">⋯</button>
+        <div class="menu-pop" id="menu-pop" hidden>
+          <button id="hh-open" type="button">Haushalt</button>
+          <button id="buy-open" type="button" hidden>Einkäufe pro Monat</button>
+          <button class="danger clear-all" id="clear-all" type="button" disabled>Lager leeren</button>
+        </div></div>
       </div>
     </div>
     <div class="seg views" id="views" role="group" aria-label="Ansicht">
@@ -296,7 +342,6 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   </header>
   <button class="pillbtn" id="hofer-open" type="button" hidden>Prospekt-Aktionen ansehen</button>
   <button class="pillbtn" id="push-open" type="button" hidden>Erinnerung senden</button>
-  <button class="pillbtn" id="buy-open" type="button" hidden>Einkäufe pro Monat</button>
   <main id="list"></main>
 </div>
 
@@ -323,11 +368,11 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     <div class="f wide"><label for="push-ttl">Titel</label><input id="push-ttl" type="text" maxlength="80" value="Einkaufen"></div>
     <div class="f wide"><label for="push-body">Nachricht (optional)</label><textarea id="push-body" rows="2" maxlength="500"></textarea></div>
     <div class="f wide"><label>Artikel von der Einkaufsliste anhängen</label><div id="push-items"></div></div>
-    <label><input id="push-all" type="checkbox"> Gesamte aktuelle Einkaufsliste anhängen (beim Senden)</label>
+    <label class="chk"><input id="push-all" type="checkbox"> Gesamte aktuelle Einkaufsliste anhängen (beim Senden)</label>
     <div class="f wide"><label for="push-rep">Wiederholung</label><select id="push-rep"><option value="once">Einmalig</option><option value="daily">Täglich</option></select></div>
     <div class="f wide" id="push-date-wrap"><label for="push-date">Datum</label><input id="push-date" type="date"></div>
     <div class="f wide"><label for="push-time">Uhrzeit</label><input id="push-time" type="time" value="17:00"></div>
-    <button class="pillbtn" id="push-save" type="button">Erinnerung speichern</button> <button class="pillbtn" id="push-cancel" type="button" hidden>Bearbeiten abbrechen</button>
+    <div class="sticky-cta"><button id="push-save" type="button">Erinnerung speichern</button> <button class="pillbtn" id="push-cancel" type="button" hidden style="margin-top:8px">Bearbeiten abbrechen</button></div>
     <p id="push-status" role="status"></p>
     <h3>Geplante Erinnerungen</h3>
     <div id="push-list"></div>
@@ -339,7 +384,7 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     <div class="f wide"><label for="hofer-src">Geschäft</label><select id="hofer-src"><option value="HOFER">HOFER</option><option value="Lidl">Lidl</option></select></div>
     <div class="f wide"><label for="hofer-query">Produkt suchen</label><input id="hofer-query" type="search" placeholder="z. B. Kartoffeln"></div>
     <div class="f wide"><label for="hofer-category">Kategorie</label><select id="hofer-category"><option value="">Alle Kategorien</option></select></div>
-    <label><input id="hofer-current" type="checkbox"> Nur jetzt gültige Aktionen</label>
+    <label class="chk"><input id="hofer-current" type="checkbox" checked> Nur jetzt gültige Aktionen</label>
     <p class="hofer-test" id="hofer-test" hidden>Testausgabe · erste 5 Seiten. Das Flugblatt ist bisher teilweise erfasst.</p>
     <p id="hofer-status" role="status"></p>
     <button class="pillbtn" id="hofer-reload" type="button">Angebote aktualisieren</button>
@@ -812,7 +857,7 @@ function render(){
       html+='<li class="row">'+
         '<button type="button" class="info" data-act="edit" data-id="'+id+'"><span class="title">'+esc(str(it.name)||"Ohne Namen")+'</span><span class="meta">'+meta.join("<span aria-hidden=\"true\">·</span>")+'</span></button>'+
         '<div class="qty"><button type="button" data-act="dec" data-id="'+id+'" aria-label="Eins weniger">−</button><span class="n">'+esc(fmtNum(qtyOf(it)))+'<small>'+esc(str(it.unit))+'</small></span><button type="button" data-act="inc" data-id="'+id+'" aria-label="Eins mehr">+</button></div>'+
-        '<button type="button" class="done" data-act="remove" data-id="'+id+'" aria-label="'+esc(str(it.name))+' aufgebraucht, entfernen"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10.5l4 4 8-9"/></svg></button></li>';
+        '<button type="button" class="done" data-act="remove" data-id="'+id+'" aria-label="'+esc(str(it.name))+' aufgebraucht, entfernen"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h12M8 6V4h4v2M6 6l1 10h6l1-10"/></svg></button></li>';
     });
     html+="</ul></section>";
   });
@@ -836,7 +881,7 @@ function renderList(rows){
       html+='<li class="row">'+
         '<button type="button" class="info" data-act="edit" data-id="'+id+'"><span class="title">'+esc(str(it.name)||"Ohne Namen")+'</span><span class="meta">'+esc(str(it.cat)||"Sonstiges")+'</span></button>'+
         '<div class="qty"><button type="button" data-act="dec" data-id="'+id+'" aria-label="Eins weniger">−</button><span class="n">'+esc(fmtNum(qtyOf(it)))+'<small>'+esc(str(it.unit))+'</small></span><button type="button" data-act="inc" data-id="'+id+'" aria-label="Eins mehr">+</button></div>'+
-        '<button type="button" class="done" data-act="bought" data-id="'+id+'" aria-label="'+esc(str(it.name))+' gekauft, ins Lager legen"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10.5l4 4 8-9"/></svg></button></li>';
+        '<button type="button" class="done" data-act="bought" data-id="'+id+'" aria-label="'+esc(str(it.name))+' gekauft, ins Lager legen"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h2l2 9h8l2-6H6"/><path d="M9 9l2 2 3-3"/></svg></button></li>';
     });
     html+="</ul></section>";
   });
@@ -850,7 +895,7 @@ function renderHofer(){
   $("hofer-test").hidden=!hoferOffers.some(function(o){return o.test_mode});
   $("hofer-status").textContent=hoferLoading?"Lade gespeicherte Angebote …":hoferError||(!hoferOffers.length?"Noch keine freigegebenen Angebote verfügbar.":rows.length+" passende Angebote");
   $("hofer-reload").disabled=hoferLoading;
-  $("hofer-results").innerHTML=rows.map(function(o){return '<section class="group"><div class="hofer-card"><h3>'+esc(o.name)+'</h3><p>'+esc([o.brand,o.quantity,o.category].filter(Boolean).join(" · "))+'</p><p><strong>'+esc(fmtEur(Number(o.price)))+'</strong>'+(o.unit_price?' · '+esc(o.unit_price):'')+'</p><p>'+(o.valid_from>today?'Ab '+esc(fmtDate(o.valid_from)):'Gültig')+' bis '+esc(fmtDate(o.valid_to))+'</p>'+(o.conditions?'<p>'+esc(o.conditions)+'</p>':'')+(o.test_mode?'<p>Testausgabe · erste 5 Seiten</p>':'')+'<p><a href="'+esc(o.source_url+'/page/'+o.page)+'" target="_blank" rel="noopener noreferrer">Flugblatt · Seite '+esc(o.page)+'</a></p><button class="pillbtn" type="button" data-hofer-id="'+esc(o.id)+'">'+(hoferAdded[o.id]?"✓ "+hoferAdded[o.id]+"× auf der Liste · noch eins":"Auf die Einkaufsliste")+'</button></div></section>'}).join("");
+  $("hofer-results").innerHTML=rows.map(function(o){var n=hoferAdded[o.id];return '<div class="hofer-row"><div class="hi"><div class="hn">'+esc(o.name)+'</div><div class="hm">'+esc([o.brand,o.quantity].filter(Boolean).join(" · "))+(o.unit_price?' · '+esc(o.unit_price):'')+'</div><div class="hm">'+(o.valid_from>today?'ab '+esc(fmtDate(o.valid_from))+' ':'')+'bis '+esc(fmtDate(o.valid_to))+(o.conditions?' · '+esc(o.conditions):'')+' · <a href="'+esc(o.source_url+'/page/'+o.page)+'" target="_blank" rel="noopener noreferrer">S. '+esc(o.page)+'</a></div></div><div class="hp">'+esc(fmtEur(Number(o.price)))+'</div><button class="hadd'+(n?' on':'')+'" type="button" data-hofer-id="'+esc(o.id)+'" aria-label="'+esc(o.name)+' auf die Einkaufsliste">'+(n?n+'×':'+')+'</button></div>'}).join("");
 }
 function loadHofer(){
   if(!sb||hoferLoading)return;
@@ -865,7 +910,7 @@ function loadHofer(){
     $("hofer-category").value=cats.indexOf(category)>-1?category:"";renderHofer();
   },function(){if(epoch!==hoferEpoch)return;hoferLoading=false;hoferError="Keine Verbindung. Bitte versuch es erneut.";renderHofer()});
 }
-$("hofer-open").addEventListener("click",function(){$("hofer-scrim").hidden=false;$("hofer-query").focus();loadHofer()});
+$("hofer-open").addEventListener("click",function(){$("hofer-scrim").hidden=false;loadHofer()});
 $("hofer-close").addEventListener("click",function(){$("hofer-scrim").hidden=true;$("hofer-open").focus()});
 $("hofer-reload").addEventListener("click",loadHofer);
 $("hofer-src").addEventListener("change",function(){hoferSrc=$("hofer-src").value;hoferEpoch++;hoferLoading=false;hoferOffers=[];hoferAdded={};$("hofer-category").value="";renderHofer();loadHofer()});
@@ -1009,6 +1054,52 @@ function buyOpen(){
 $("buy-open").addEventListener("click",buyOpen);
 $("buy-close").addEventListener("click",function(){$("buy-scrim").hidden=true});
 $("buy-scrim").addEventListener("click",function(e){if(e.target===$("buy-scrim"))$("buy-close").click()});
+
+/* ---------- native UX v23 ---------- */
+function menuClose(){$("menu-pop").hidden=true;$("menu-btn").setAttribute("aria-expanded","false")}
+$("menu-btn").addEventListener("click",function(e){e.stopPropagation();var o=$("menu-pop").hidden;$("menu-pop").hidden=!o;$("menu-btn").setAttribute("aria-expanded",String(o))});
+document.addEventListener("click",function(e){if(!e.target.closest(".menu-wrap"))menuClose()});
+["hh-open","buy-open"].forEach(function(id){$(id).addEventListener("click",menuClose)});
+function buzz(){try{navigator.vibrate&&navigator.vibrate(12)}catch(e){}}
+document.addEventListener("click",function(e){if(e.target.closest(".done,.hadd"))buzz()},true);
+/* Zurück-Taste schließt Sheets */
+(function(){
+  var open=[],popping=false;
+  function closeBtn(sc){return sc.querySelector(".sheet-head .x")||sc.querySelector(".x")}
+  function vis(sc){return !sc.hidden}
+  var mo=new MutationObserver(function(){
+    document.querySelectorAll(".scrim").forEach(function(sc){
+      var i=open.indexOf(sc);
+      if(vis(sc)&&i<0){open.push(sc);try{history.pushState({sheet:sc.id},"")}catch(e){}}
+      else if(!vis(sc)&&i>-1){open.splice(i,1);if(!popping){try{if(history.state&&history.state.sheet)history.back()}catch(e){}}}
+    });
+  });
+  document.querySelectorAll(".scrim").forEach(function(sc){mo.observe(sc,{attributes:true,attributeFilter:["hidden"]})});
+  window.addEventListener("popstate",function(){
+    var sc=open[open.length-1];if(!sc)return;popping=true;var b=closeBtn(sc);if(b&&!b.disabled)b.click();else sc.hidden=true;setTimeout(function(){popping=false},0);
+  });
+  /* Runterwischen am Sheet-Kopf schließt */
+  document.querySelectorAll(".scrim .sheet-head").forEach(function(h){
+    var y0=null;h.addEventListener("touchstart",function(e){y0=e.touches[0].clientY},{passive:true});
+    h.addEventListener("touchend",function(e){if(y0!=null&&e.changedTouches[0].clientY-y0>70){var b=h.querySelector(".x");if(b)b.click()}y0=null},{passive:true});
+  });
+})();
+/* Wischen in Zeilen: links = Haken-Aktion (aufgebraucht / gekauft) */
+(function(){
+  var row=null,x0=0,y0=0,dx=0,lock=null;
+  $("list").addEventListener("touchstart",function(e){row=e.target.closest(".row");if(!row||!row.querySelector(".done"))return row=null;x0=e.touches[0].clientX;y0=e.touches[0].clientY;dx=0;lock=null},{passive:true});
+  $("list").addEventListener("touchmove",function(e){if(!row)return;var mx=e.touches[0].clientX-x0,my=e.touches[0].clientY-y0;if(lock==null&&(Math.abs(mx)>10||Math.abs(my)>10))lock=Math.abs(mx)>Math.abs(my)*1.5?"x":"y";if(lock!=="x")return;dx=Math.min(0,mx);row.classList.add("swiping");row.style.transform="translateX("+dx+"px)"},{passive:true});
+  $("list").addEventListener("touchend",function(){if(!row)return;var r=row;r.classList.remove("swiping");r.style.transform="";if(lock==="x"&&dx<-90){var b=r.querySelector(".done");if(b)b.click()}row=null},{passive:true});
+})();
+/* Essensplan: zum heutigen Tag scrollen */
+var planScrolled=false;
+$("v-plan").addEventListener("click",function(){planScrolled=false});
+new MutationObserver(function(){
+  if(view!=="plan"||planScrolled)return;
+  var t=new Date().toLocaleDateString("de-AT",{day:"numeric",month:"long"});
+  var h=[].slice.call($("list").querySelectorAll("h2,h3")).find(function(x){return x.textContent.indexOf(t)>-1});
+  if(h){planScrolled=true;setTimeout(function(){h.scrollIntoView({block:"start",behavior:"smooth"})},50)}
+}).observe($("list"),{childList:true});
 
 /* ---------- Rezepte ---------- */
 function recipeCategories(r){var values=Array.isArray(r.categories)?r.categories:[];return RECIPE_CATEGORIES.filter(function(c){return values.indexOf(c)>-1})}
@@ -1404,7 +1495,7 @@ $("list").addEventListener("click",function(e){
   else if(act==="toggle-shop"){var ks="shop:"+g;closed[ks]=!closed[ks];savePref();render()}
   else if(act==="clear-group"){var l=view==="list"?shopping().filter(function(i){return (str(i.shop)||"Ohne Geschäft")===g}):visible().filter(function(i){return (str(i[groupBy])||"Sonstiges")===g});removeItems(l,l.length+" Artikel aus „"+g+"“ entfernt")}
 });
-$("clear-all").addEventListener("click",function(){var l=cur().slice(),n=l.length;removeItems(l,(view==="list"?"Liste geleert: ":"Lager geleert: ")+n+" Artikel entfernt")});
+$("clear-all").addEventListener("click",function(){var l=cur().slice(),n=l.length;menuClose();if(!n||!confirm((view==="list"?"Ganze Einkaufsliste":"Ganzes Lager")+" leeren? ("+n+" Artikel)"))return;removeItems(l,(view==="list"?"Liste geleert: ":"Lager geleert: ")+n+" Artikel entfernt")});
 $("v-stock").addEventListener("click",function(){view="stock";savePref();render()});
 $("v-list").addEventListener("click",function(){view="list";savePref();render()});
 $("v-recipes").addEventListener("click",function(){view="recipes";savePref();render();loadRecipes()});
