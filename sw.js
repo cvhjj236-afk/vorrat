@@ -1,5 +1,5 @@
 /* Vorrat: Service Worker. Hält die App-Oberfläche offline verfügbar. Daten kommen immer direkt von Supabase. */
-var CACHE = "vorrat-v26";
+var CACHE = "vorrat-v27";
 var SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./supabase.js"];
 
 self.addEventListener("install", function (e) {

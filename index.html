@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Vorrat</title>
+<script>try{var _t=localStorage.getItem("vorrat.theme")||"light";if(_t!=="auto")document.documentElement.setAttribute("data-theme",_t)}catch(e){document.documentElement.setAttribute("data-theme","light")}</script>
 <meta name="theme-color" content="#2a9467">
 <meta name="description" content="Einkäufe erfassen und den Vorrat im Haushalt im Blick behalten.">
 <link rel="manifest" href="manifest.webmanifest">
@@ -324,7 +325,8 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
         <div class="menu-wrap"><button class="pillbtn" id="menu-btn" type="button" aria-label="Mehr" aria-haspopup="true" aria-expanded="false">⋯</button>
         <div class="menu-pop" id="menu-pop" hidden>
           <button id="hh-open" type="button">Haushalt</button>
-          <button type="button" disabled style="font-size:13px;opacity:.6">Version 26</button>
+          <button type="button" id="theme-btn">Design: Hell</button>
+          <button type="button" disabled style="font-size:13px;opacity:.6">Version 27</button>
           <button id="buy-open" type="button" hidden>Einkäufe pro Monat</button>
           <button class="danger clear-all" id="clear-all" type="button" disabled>Lager leeren</button>
         </div></div>
@@ -1061,6 +1063,9 @@ $("buy-close").addEventListener("click",function(){$("buy-scrim").hidden=true});
 $("buy-scrim").addEventListener("click",function(e){if(e.target===$("buy-scrim"))$("buy-close").click()});
 
 /* ---------- native UX v23 ---------- */
+var THEMES=["light","dark","auto"],THEMELBL={light:"Hell",dark:"Dunkel",auto:"Automatisch"};
+function themeApply(t){try{localStorage.setItem("vorrat.theme",t)}catch(e){}if(t==="auto")document.documentElement.removeAttribute("data-theme");else document.documentElement.setAttribute("data-theme",t);$("theme-btn").textContent="Design: "+THEMELBL[t]}
+(function(){var t="light";try{t=localStorage.getItem("vorrat.theme")||"light"}catch(e){}$("theme-btn").textContent="Design: "+THEMELBL[t];$("theme-btn").addEventListener("click",function(e){e.stopPropagation();var c="light";try{c=localStorage.getItem("vorrat.theme")||"light"}catch(x){}themeApply(THEMES[(THEMES.indexOf(c)+1)%3])})})();
 function menuClose(){$("menu-pop").hidden=true;$("menu-btn").setAttribute("aria-expanded","false")}
 $("menu-btn").addEventListener("click",function(e){e.stopPropagation();var o=$("menu-pop").hidden;$("menu-pop").hidden=!o;$("menu-btn").setAttribute("aria-expanded",String(o))});
 document.addEventListener("click",function(e){if(!e.target.closest(".menu-wrap"))menuClose()});
