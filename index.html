@@ -326,7 +326,7 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
         <div class="menu-pop" id="menu-pop" hidden>
           <button id="hh-open" type="button">Haushalt</button>
           <button type="button" id="theme-btn">Design: Hell</button>
-          <button type="button" disabled style="font-size:13px;opacity:.6">Version 29</button>
+          <button type="button" disabled style="font-size:13px;opacity:.6">Version 30</button>
           <button id="buy-open" type="button" hidden>Einkäufe pro Monat</button>
           <button class="danger clear-all" id="clear-all" type="button" disabled>Lager leeren</button>
         </div></div>
@@ -1443,7 +1443,7 @@ function markBought(it){
   var now=new Date().toISOString();
   if(same){
     clearTimeout(qtyTimers[same.id]);delete pendingQty[same.id];
-    store.patch(same.id,{qty:Math.round((qtyOf(same)+q)*100)/100,shop:str(it.shop)||same.shop||null});
+    store.patch(same.id,{qty:Math.round((qtyOf(same)+q)*100)/100,shop:same.shop||str(it.shop)||null});
     store.patch(it.id,{status:"used",removedAt:now,boughtAt:now,purchase:newId()});
   }else{
     store.add(newId(),{status:"in",removedAt:null,boughtAt:now,purchase:newId(),name:it.name,qty:q,unit:it.unit,loc:it.loc,cat:it.cat,mhd:it.mhd||null,price:it.price==null?null:it.price,shop:it.shop||null});
@@ -1593,7 +1593,7 @@ $("form").addEventListener("submit",function(e){
   var wantSt=sheetList?"list":"in";
   var same=items.find(function(i){return i.status===wantSt&&str(i.name).toLowerCase()===name.toLowerCase()&&(sheetList?(str(i.shop)||null)===data.shop:str(i.loc)===data.loc&&(str(i.mhd)||null)===data.mhd)&&str(i.unit)===data.unit});
   if(same){
-    var patch={qty:Math.round((qtyOf(same)+qty)*100)/100,shop:data.shop||same.shop||null};
+    var patch={qty:Math.round((qtyOf(same)+qty)*100)/100,shop:wantSt==="in"?(same.shop||data.shop||null):(data.shop||same.shop||null)};
     clearTimeout(qtyTimers[same.id]);delete pendingQty[same.id];
     if(wantSt==="in"&&price!=null)patch.extraPrice=Math.round(((num(same.extraPrice)||0)+price)*100)/100;
     store.patch(same.id,patch);

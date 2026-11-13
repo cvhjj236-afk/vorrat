@@ -104,3 +104,6 @@ Item-Status: "in" Lager, "list" Einkaufsliste, "used"/"gone" entnommen bzw. übe
 
 ## v29 – Einkaufswert korrigiert (2026-11-13)
 - Neue Spalte `vorrat_items.extra_price` (Migration 20261113130000, in Supabase ausgeführt): Preis eingesortierter Einkäufe. Lager-Einkaufswert = price + extra_price; Monatsstatistik nutzt nur `price` (eigene Statistikzeile), kein Doppelzählen.
+
+## v30 – Geschäft beim Einsortieren (2026-11-13)
+- Beim Einsortieren in eine Lagerzeile wird `shop` der alten Zeile nicht mehr überschrieben (sonst wanderte der alte Einkauf zum neuen Geschäft). Live getestet (Testartikel „ZZTest Merge", danach aus DB gelöscht).
