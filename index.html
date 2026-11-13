@@ -324,6 +324,7 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
         <div class="menu-wrap"><button class="pillbtn" id="menu-btn" type="button" aria-label="Mehr" aria-haspopup="true" aria-expanded="false">⋯</button>
         <div class="menu-pop" id="menu-pop" hidden>
           <button id="hh-open" type="button">Haushalt</button>
+          <button type="button" disabled style="font-size:13px;opacity:.6">Version 26</button>
           <button id="buy-open" type="button" hidden>Einkäufe pro Monat</button>
           <button class="danger clear-all" id="clear-all" type="button" disabled>Lager leeren</button>
         </div></div>
@@ -1730,7 +1731,9 @@ $("hh-logout").addEventListener("click",function(){closeHousehold();sb.auth.sign
 /* ---------- Start ---------- */
 render();
 if("serviceWorker" in navigator&&(location.protocol==="https:"||location.hostname==="localhost")){
-  window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){})});
+  var hadCtl=!!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener("controllerchange",function(){if(hadCtl&&!window.__rl){window.__rl=1;location.reload()}});
+  window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").then(function(r){r.update();document.addEventListener("visibilitychange",function(){if(!document.hidden)r.update()})}).catch(function(){})});
 }
 if(!window.supabase||typeof window.supabase.createClient!=="function"){
   $("auth-lead").textContent="Die App konnte nicht vollständig geladen werden. Bitte lade die Seite neu.";
