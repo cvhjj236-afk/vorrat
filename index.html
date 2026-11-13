@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Vorrat</title>
-<meta name="theme-color" content="#1d6b48">
+<meta name="theme-color" content="#2a9467">
 <meta name="description" content="Einkäufe erfassen und den Vorrat im Haushalt im Blick behalten.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="icon-192.png">
@@ -15,8 +15,8 @@
 <style>
 /* Layout: eine Spalte wie ein Regal. Gruppen sind Regalböden mit Etikett, Artikel sind Zeilen mit Mengensteuerung rechts. */
 :root{
-  --bg:#eef1ea; --surface:#ffffff; --ink:#17251d; --muted:#5f6f65; --line:#d5dccf;
-  --accent:#1d6b48; --accent-ink:#ffffff; --accent-soft:#dcebe1;
+  --bg:#fbf8f1; --surface:#ffffff; --ink:#233028; --muted:#6b776f; --line:#ebe4d6;
+  --accent:#2a9467; --accent-ink:#ffffff; --accent-soft:#e0f3e8;
   --warn:#9a5b00; --warn-soft:#fbeccd; --crit:#a8261c; --crit-soft:#f9dedb;
   --display:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;
   --body:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
@@ -528,7 +528,7 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 "use strict";
 var SUPABASE_URL="https://wpxoddfaczbhxnmfidoj.supabase.co";
 var SUPABASE_KEY="sb_publishable_i7HNSIeWmKQT_Y8Dc-YZxA_Ku-pfxMC";
-var LOCS=["Kühlschrank","Tiefkühler","Vorratsschrank","Keller","Bad","Sonstiges"];
+var LOCS=["Kühlschrank","Tiefkühler","Küche","Vorratsschrank","Keller","Bad","Sonstiges"];
 var CATS=["Obst & Gemüse","Milchprodukte & Eier","Fleisch & Fisch","Brot & Backwaren","Trockenware","Konserven & Gläser","Tiefkühlkost","Getränke","Süßes & Snacks","Gewürze & Saucen","Drogerie","Haushalt","Sonstiges"];
 var UNITS=["Stk","Pkg","g","kg","ml","l","Dose","Flasche","Glas"];
 var CACHE_KEY="vorrat.cache.v1";
