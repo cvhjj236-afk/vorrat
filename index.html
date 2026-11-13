@@ -326,7 +326,7 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
         <div class="menu-pop" id="menu-pop" hidden>
           <button id="hh-open" type="button">Haushalt</button>
           <button type="button" id="theme-btn">Design: Hell</button>
-          <button type="button" disabled style="font-size:13px;opacity:.6">Version 27</button>
+          <button type="button" disabled style="font-size:13px;opacity:.6">Version 28</button>
           <button id="buy-open" type="button" hidden>Einkäufe pro Monat</button>
           <button class="danger clear-all" id="clear-all" type="button" disabled>Lager leeren</button>
         </div></div>
@@ -548,6 +548,8 @@ function daysUntil(iso){if(!/^\d{4}-\d{2}-\d{2}$/.test(iso))return null;var a=ne
 function fmtDate(iso){var p=iso.split("-");return p[2]+"."+p[1]+"."}
 function productKey(name){var b=new TextEncoder().encode(name.trim().toLowerCase()),h="";for(var i=0;i<b.length&&i<90;i++)h+=b[i].toString(16).padStart(2,"0");return "p"+h}
 function newId(){return "i"+Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
+/* Einkauf, der in eine vorhandene Lagerzeile einsortiert wird: eigene Statistikzeile (status used), damit Datum, Preis und Geschaeft stimmen */
+function ledgerPurchase(data,pid){return store.add(newId(),{status:"used",removedAt:new Date().toISOString(),boughtAt:new Date().toISOString(),purchase:pid,name:data.name,qty:data.qty,unit:data.unit,loc:data.loc,cat:data.cat,mhd:null,price:data.price==null?null:data.price,shop:data.shop||null})}
 
 /* ---------- state ---------- */
 var items=[];           // status "in" (Lager) und "list" (Einkaufsliste)
@@ -1442,7 +1444,7 @@ function markBought(it){
   if(same){
     clearTimeout(qtyTimers[same.id]);delete pendingQty[same.id];
     store.patch(same.id,{qty:Math.round((qtyOf(same)+q)*100)/100,shop:str(it.shop)||same.shop||null});
-    store.patch(it.id,{status:"gone",removedAt:now,purchase:null});
+    store.patch(it.id,{status:"used",removedAt:now,boughtAt:now,purchase:newId()});
   }else{
     store.add(newId(),{status:"in",removedAt:null,boughtAt:now,purchase:newId(),name:it.name,qty:q,unit:it.unit,loc:it.loc,cat:it.cat,mhd:it.mhd||null,price:it.price==null?null:it.price,shop:it.shop||null});
     store.patch(it.id,{status:"gone",removedAt:now,purchase:null});
@@ -1592,9 +1594,9 @@ $("form").addEventListener("submit",function(e){
   var same=items.find(function(i){return i.status===wantSt&&str(i.name).toLowerCase()===name.toLowerCase()&&(sheetList?(str(i.shop)||null)===data.shop:str(i.loc)===data.loc&&(str(i.mhd)||null)===data.mhd)&&str(i.unit)===data.unit});
   if(same){
     var patch={qty:Math.round((qtyOf(same)+qty)*100)/100,shop:data.shop||same.shop||null};
-    if(price!=null)patch.price=Math.round(((num(same.price)||0)+price)*100)/100;
     clearTimeout(qtyTimers[same.id]);delete pendingQty[same.id];
     store.patch(same.id,patch);
+    if(wantSt==="in")ledgerPurchase(data,buy.id);else if(price!=null)store.patch(same.id,{price:Math.round(((num(same.price)||0)+price)*100)/100});
   }else{
     store.add(newId(),Object.assign({status:wantSt,removedAt:null,boughtAt:new Date().toISOString(),purchase:buy.id},data));
   }
@@ -1666,7 +1668,7 @@ $("sc-ok").addEventListener("click",function(){
     var pk=products[productKey(name)];
     var data={name:name.slice(0,80),qty:qty,unit:src.unit,loc:(pk&&pk.loc)||DEFLOC[src.cat]||"Vorratsschrank",cat:src.cat,mhd:null,price:price,shop:shop};
     var same=items.find(function(i){return i.status===scanTo&&str(i.name).toLowerCase()===name.toLowerCase()&&str(i.unit)===data.unit&&(scanTo==="list"?(str(i.shop)||null)===shop:str(i.loc)===data.loc&&!str(i.mhd))});
-    if(same){var pt={qty:Math.round((qtyOf(same)+qty)*100)/100};if(price!=null)pt.price=Math.round(((num(same.price)||0)+price)*100)/100;clearTimeout(qtyTimers[same.id]);delete pendingQty[same.id];store.patch(same.id,pt)}
+    if(same){var pt={qty:Math.round((qtyOf(same)+qty)*100)/100};clearTimeout(qtyTimers[same.id]);delete pendingQty[same.id];store.patch(same.id,pt);if(scanTo==="in")ledgerPurchase(data,pid)}
     else store.add(newId(),Object.assign({status:scanTo,removedAt:null,boughtAt:new Date().toISOString(),purchase:pid},data));
     store.product(productKey(name),{name:data.name,unit:data.unit,loc:data.loc,cat:data.cat,shop:data.shop});n++;
   }

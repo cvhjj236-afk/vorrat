@@ -96,3 +96,8 @@ Item-Status: "in" Lager, "list" Einkaufsliste, "used"/"gone" entnommen bzw. übe
 - v25: neuer Lagerort „Küche" (LOCS, nach Tiefkühler), helleres Farbschema (bg #fbf8f1, accent #2a9467, line #ebe4d6; Dark-Mode unverändert), theme_color angepasst. sw `vorrat-v25`.
 - v26: SW holt Dateien mit cache:no-cache, prüft beim Öffnen/Zurückkehren auf Updates und lädt bei neuer Version automatisch neu; ⋯-Menü zeigt 'Version 26' (bei Änderungen mitzählen).
 - v27: Design-Umschalter im ⋯-Menü (Hell/Dunkel/Automatisch), Standard Hell (localStorage vorrat.theme, setzt data-theme vor dem Rendern). Grund: iPhone im Dunkelmodus zeigte das neue helle Schema nicht. Menü zeigt 'Version 27'.
+
+## v28 – Logik-Prüfung (2026-11-13)
+- Fix Statistik: Wird ein Einkauf in eine vorhandene Lagerzeile einsortiert (Gekauft von der Liste, manuell, Beleg-Scan), entsteht eine eigene Statistikzeile (status `used`, eigene purchase-ID, Datum/Preis/Geschäft) statt dass Menge/Preis in die alte Zeile wandern (falsches Datum). Neuer Helfer `ledgerPurchase()`. Einkaufswert im Lager zählt Preise eingesortierter Einkäufe dadurch nicht mehr mit.
+- Fix Zeitplan: `vorrat_flyers_weekly()` startet Lidl auch, wenn HOFER nach 8 Fehlversuchen aufgegeben wurde oder nicht automatisch läuft (Migration 20261113120000_flyers_lidl_not_blocked.sql, in Supabase ausgeführt).
+- Geprüft ohne Befund: Realtime/Optimistik, Rückgängig/Restock, Push-Claim (at-most-once, bewusst), Hofer-Add, Run-Leases.
