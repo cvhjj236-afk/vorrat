@@ -326,7 +326,7 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
         <div class="menu-pop" id="menu-pop" hidden>
           <button id="hh-open" type="button">Haushalt</button>
           <button type="button" id="theme-btn">Design: Hell</button>
-          <button type="button" disabled style="font-size:13px;opacity:.6">Version 28</button>
+          <button type="button" disabled style="font-size:13px;opacity:.6">Version 29</button>
           <button id="buy-open" type="button" hidden>Einkäufe pro Monat</button>
           <button class="danger clear-all" id="clear-all" type="button" disabled>Lager leeren</button>
         </div></div>
@@ -577,9 +577,9 @@ function note(text){var n=$("note");n.textContent=text;n.hidden=!text}
 
 /* ---------- Supabase ---------- */
 var sb=null, userEmail="", checkedFor=null, dataStarted=false, channel=null, subscribedOnce=false;
-var MAP={name:"name",qty:"qty",unit:"unit",loc:"loc",cat:"cat",mhd:"mhd",price:"price",shop:"shop",status:"status",purchase:"purchase",boughtAt:"bought_at",removedAt:"removed_at"};
+var MAP={name:"name",qty:"qty",unit:"unit",loc:"loc",cat:"cat",mhd:"mhd",price:"price",shop:"shop",status:"status",purchase:"purchase",boughtAt:"bought_at",removedAt:"removed_at",extraPrice:"extra_price"};
 function toRow(d){var o={};Object.keys(d).forEach(function(k){if(MAP[k])o[MAP[k]]=d[k]});return o}
-function fromRow(r){return {id:r.id,name:r.name,qty:r.qty==null?1:Number(r.qty),unit:r.unit,loc:r.loc,cat:r.cat,mhd:r.mhd,price:r.price==null?null:Number(r.price),shop:r.shop,status:r.status,purchase:r.purchase,boughtAt:r.bought_at,removedAt:r.removed_at}}
+function fromRow(r){return {id:r.id,name:r.name,qty:r.qty==null?1:Number(r.qty),unit:r.unit,loc:r.loc,cat:r.cat,mhd:r.mhd,price:r.price==null?null:Number(r.price),shop:r.shop,status:r.status,purchase:r.purchase,boughtAt:r.bought_at,removedAt:r.removed_at,extraPrice:r.extra_price==null?null:Number(r.extra_price)}}
 
 function cacheSave(){try{localStorage.setItem(CACHE_KEY,JSON.stringify({items:items,products:products}))}catch(e){}}
 function cacheLoad(){try{var c=JSON.parse(localStorage.getItem(CACHE_KEY)||"null");if(c&&Array.isArray(c.items)){items=c.items;products=c.products||{};loaded=true;return true}}catch(e){}return false}
@@ -808,7 +808,7 @@ function render(){
   var list=$("list");
   var inStock=stock(),onList=shopping();
   var soon=inStock.filter(function(i){var d=daysUntil(str(i.mhd));return d!=null&&d<=3}).length;
-  var worth=inStock.reduce(function(s,i){return s+(num(i.price)||0)},0);
+  var worth=inStock.reduce(function(s,i){return s+(num(i.price)||0)+(num(i.extraPrice)||0)},0);
   var st=$("stats"),isList=view==="list",isRecipes=view==="recipes",isPlan=view==="plan";
   $("hofer-open").hidden=!isList;$("push-open").hidden=!isList;$("buy-open").hidden=isList||isRecipes||isPlan;
   if(!loaded){st.textContent="Lade Bestand …"}
@@ -1595,6 +1595,7 @@ $("form").addEventListener("submit",function(e){
   if(same){
     var patch={qty:Math.round((qtyOf(same)+qty)*100)/100,shop:data.shop||same.shop||null};
     clearTimeout(qtyTimers[same.id]);delete pendingQty[same.id];
+    if(wantSt==="in"&&price!=null)patch.extraPrice=Math.round(((num(same.extraPrice)||0)+price)*100)/100;
     store.patch(same.id,patch);
     if(wantSt==="in")ledgerPurchase(data,buy.id);else if(price!=null)store.patch(same.id,{price:Math.round(((num(same.price)||0)+price)*100)/100});
   }else{
@@ -1668,7 +1669,7 @@ $("sc-ok").addEventListener("click",function(){
     var pk=products[productKey(name)];
     var data={name:name.slice(0,80),qty:qty,unit:src.unit,loc:(pk&&pk.loc)||DEFLOC[src.cat]||"Vorratsschrank",cat:src.cat,mhd:null,price:price,shop:shop};
     var same=items.find(function(i){return i.status===scanTo&&str(i.name).toLowerCase()===name.toLowerCase()&&str(i.unit)===data.unit&&(scanTo==="list"?(str(i.shop)||null)===shop:str(i.loc)===data.loc&&!str(i.mhd))});
-    if(same){var pt={qty:Math.round((qtyOf(same)+qty)*100)/100};clearTimeout(qtyTimers[same.id]);delete pendingQty[same.id];store.patch(same.id,pt);if(scanTo==="in")ledgerPurchase(data,pid)}
+    if(same){var pt={qty:Math.round((qtyOf(same)+qty)*100)/100};if(scanTo==="in"&&price!=null)pt.extraPrice=Math.round(((num(same.extraPrice)||0)+price)*100)/100;clearTimeout(qtyTimers[same.id]);delete pendingQty[same.id];store.patch(same.id,pt);if(scanTo==="in")ledgerPurchase(data,pid)}
     else store.add(newId(),Object.assign({status:scanTo,removedAt:null,boughtAt:new Date().toISOString(),purchase:pid},data));
     store.product(productKey(name),{name:data.name,unit:data.unit,loc:data.loc,cat:data.cat,shop:data.shop});n++;
   }

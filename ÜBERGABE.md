@@ -101,3 +101,6 @@ Item-Status: "in" Lager, "list" Einkaufsliste, "used"/"gone" entnommen bzw. übe
 - Fix Statistik: Wird ein Einkauf in eine vorhandene Lagerzeile einsortiert (Gekauft von der Liste, manuell, Beleg-Scan), entsteht eine eigene Statistikzeile (status `used`, eigene purchase-ID, Datum/Preis/Geschäft) statt dass Menge/Preis in die alte Zeile wandern (falsches Datum). Neuer Helfer `ledgerPurchase()`. Einkaufswert im Lager zählt Preise eingesortierter Einkäufe dadurch nicht mehr mit.
 - Fix Zeitplan: `vorrat_flyers_weekly()` startet Lidl auch, wenn HOFER nach 8 Fehlversuchen aufgegeben wurde oder nicht automatisch läuft (Migration 20261113120000_flyers_lidl_not_blocked.sql, in Supabase ausgeführt).
 - Geprüft ohne Befund: Realtime/Optimistik, Rückgängig/Restock, Push-Claim (at-most-once, bewusst), Hofer-Add, Run-Leases.
+
+## v29 – Einkaufswert korrigiert (2026-11-13)
+- Neue Spalte `vorrat_items.extra_price` (Migration 20261113130000, in Supabase ausgeführt): Preis eingesortierter Einkäufe. Lager-Einkaufswert = price + extra_price; Monatsstatistik nutzt nur `price` (eigene Statistikzeile), kein Doppelzählen.
