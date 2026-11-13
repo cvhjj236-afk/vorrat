@@ -996,20 +996,15 @@ $("push-list").addEventListener("click",function(e){
 });
 
 /* ---------- Einkäufe pro Monat ---------- */
-function buyMonths(){
-  var m={};
-  items.forEach(function(i){
-    if(i.status==="list"||!i.purchase||!i.boughtAt)return;
-    var k=String(i.boughtAt).slice(0,7);if(!/^\d{4}-\d{2}$/.test(k))return;
-    var e=m[k]||(m[k]={trips:{},n:0,sum:0});e.trips[i.purchase]=1;e.n++;e.sum+=num(i.price)||0;
-  });
-  return Object.keys(m).sort().reverse().map(function(k){return {k:k,trips:Object.keys(m[k].trips).length,n:m[k].n,sum:m[k].sum}});
-}
 function buyOpen(){
-  var rows=buyMonths().slice(0,12),names=["Jänner","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
-  $("buy-body").innerHTML=rows.length?'<table class="buytable" style="width:100%;border-collapse:collapse"><thead><tr><th align="left">Monat</th><th align="right">Einkäufe</th><th align="right">Artikel</th><th align="right">Summe</th></tr></thead><tbody>'+rows.map(function(r){
-    return '<tr><td>'+esc(names[Number(r.k.slice(5))-1]+" "+r.k.slice(0,4))+'</td><td align="right">'+r.trips+'</td><td align="right">'+r.n+'</td><td align="right">'+(r.sum?esc(fmtEur(r.sum)):"–")+'</td></tr>'}).join("")+'</tbody></table><p class="note">Summe nur aus Artikeln mit Preis. Ältere Monate können ungenau sein.</p>':"<p>Noch keine Einkäufe erfasst.</p>";
-  $("buy-scrim").hidden=false;
+  var names=["Jänner","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
+  $("buy-body").innerHTML="<p>Lade …</p>";$("buy-scrim").hidden=false;
+  sb.rpc("vorrat_purchase_months").then(function(r){
+    var rows=Array.isArray(r.data)?r.data:[];
+    if(r.error){$("buy-body").innerHTML="<p>Die Auswertung ließ sich gerade nicht laden.</p>";return}
+    $("buy-body").innerHTML=rows.length?'<table style="width:100%;border-collapse:collapse"><thead><tr><th align="left">Monat</th><th align="right">Einkäufe</th><th align="right">Artikel</th><th align="right">Summe</th></tr></thead><tbody>'+rows.map(function(x){
+      return '<tr><td>'+esc(names[Number(x.month.slice(5))-1]+" "+x.month.slice(0,4))+'</td><td align="right">'+x.trips+'</td><td align="right">'+x.articles+'</td><td align="right">'+(Number(x.total)?esc(fmtEur(Number(x.total))):"–")+'</td></tr>'}).join("")+'</tbody></table><p class="note">Einkauf = ein Tag bei einem Geschäft. Summe nur aus Artikeln mit Preis, inklusive bereits verbrauchter Artikel.</p>':"<p>Noch keine Einkäufe erfasst.</p>";
+  },function(){$("buy-body").innerHTML="<p>Keine Verbindung.</p>"});
 }
 $("buy-open").addEventListener("click",buyOpen);
 $("buy-close").addEventListener("click",function(){$("buy-scrim").hidden=true});
