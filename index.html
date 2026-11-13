@@ -296,6 +296,7 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   </header>
   <button class="pillbtn" id="hofer-open" type="button" hidden>Prospekt-Aktionen ansehen</button>
   <button class="pillbtn" id="push-open" type="button" hidden>Erinnerung senden</button>
+  <button class="pillbtn" id="buy-open" type="button" hidden>Einkäufe pro Monat</button>
   <main id="list"></main>
 </div>
 
@@ -307,9 +308,15 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   <button type="button" id="undo">Rückgängig</button>
 </div>
 
+<div class="scrim" id="buy-scrim" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="buy-title">
+    <div class="sheet-head"><h2 id="buy-title">Einkäufe pro Monat</h2><button class="x" id="buy-close" type="button">Schließen</button></div>
+    <div id="buy-body"></div>
+  </div>
+</div>
 <div class="scrim" id="push-scrim" hidden>
   <div class="sheet hofer-sheet" role="dialog" aria-modal="true" aria-labelledby="push-title">
-    <div class="sheet-head"><h2 id="push-title">Erinnerung senden</h2><button class="x" id="push-close" type="button">Schließen</button></div>
+    <div class="sheet-head"><h2 id="push-title"><span id="push-h">Erinnerung senden</span></h2><button class="x" id="push-close" type="button">Schließen</button></div>
     <p id="push-device" role="status"></p>
     <button class="pillbtn" id="push-enable" type="button">Benachrichtigungen auf diesem Gerät aktivieren</button>
     <div class="f wide"><label for="push-to">An</label><select id="push-to"></select></div>
@@ -320,7 +327,7 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     <div class="f wide"><label for="push-rep">Wiederholung</label><select id="push-rep"><option value="once">Einmalig</option><option value="daily">Täglich</option></select></div>
     <div class="f wide" id="push-date-wrap"><label for="push-date">Datum</label><input id="push-date" type="date"></div>
     <div class="f wide"><label for="push-time">Uhrzeit</label><input id="push-time" type="time" value="17:00"></div>
-    <button class="pillbtn" id="push-save" type="button">Erinnerung speichern</button>
+    <button class="pillbtn" id="push-save" type="button">Erinnerung speichern</button> <button class="pillbtn" id="push-cancel" type="button" hidden>Bearbeiten abbrechen</button>
     <p id="push-status" role="status"></p>
     <h3>Geplante Erinnerungen</h3>
     <div id="push-list"></div>
@@ -749,7 +756,7 @@ function render(){
   var soon=inStock.filter(function(i){var d=daysUntil(str(i.mhd));return d!=null&&d<=3}).length;
   var worth=inStock.reduce(function(s,i){return s+(num(i.price)||0)},0);
   var st=$("stats"),isList=view==="list",isRecipes=view==="recipes",isPlan=view==="plan";
-  $("hofer-open").hidden=!isList;$("push-open").hidden=!isList;
+  $("hofer-open").hidden=!isList;$("push-open").hidden=!isList;$("buy-open").hidden=isList||isRecipes||isPlan;
   if(!loaded){st.textContent="Lade Bestand …"}
   else if(isList){st.innerHTML="<b>"+onList.length+"</b> "+(onList.length===1?"Artikel":"Artikel")+" auf der Einkaufsliste"}
   else if(isRecipes){st.innerHTML="<b>"+recipes.length+"</b> gespeicherte "+(recipes.length===1?"Rezept":"Rezepte")}
@@ -921,6 +928,8 @@ function pushEnable(){
     });
   }).catch(function(e){$("push-status").textContent="Fehler: "+String(e&&e.message||e).slice(0,160)});
 }
+var pushRows={},pushEditId=null;
+function pushReset(){pushEditId=null;$("push-save").textContent="Erinnerung speichern";$("push-cancel").hidden=true;$("push-h").textContent="Erinnerung senden"}
 function pushLoad(){
   sb.rpc("vorrat_push_recipients").then(function(r){
     var rows=Array.isArray(r.data)?r.data:[],cur=$("push-to").value;
@@ -928,15 +937,16 @@ function pushLoad(){
     if(cur)$("push-to").value=cur;
   });
   sb.from("vorrat_push_reminders").select("id,title,body,item_names,include_list,repeat,send_at,recipient_id,last_status").eq("active",true).order("send_at").then(function(r){
-    var rows=r.data||[];
+    var rows=r.data||[];pushRows={};rows.forEach(function(x){pushRows[x.id]=x});
     $("push-list").innerHTML=rows.length?rows.map(function(x){
       var t=new Date(x.send_at).toLocaleString("de-AT",{weekday:"short",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
       var extra=(x.item_names&&x.item_names.length?x.item_names.length+" Artikel":"")+(x.include_list?(x.item_names&&x.item_names.length?" + ":"")+"ganze Liste":"");
-      return '<section class="group"><div class="hofer-card"><h3>'+esc(x.title)+'</h3><p>'+esc(t)+(x.repeat==="daily"?" · täglich":" · einmalig")+(extra?" · "+esc(extra):"")+'</p><button class="pillbtn" type="button" data-push-del="'+esc(x.id)+'">Löschen</button></div></section>'
+      return '<section class="group"><div class="hofer-card"><h3>'+esc(x.title)+'</h3><p>'+esc(t)+(x.repeat==="daily"?" · täglich":" · einmalig")+(extra?" · "+esc(extra):"")+'</p><button class="pillbtn" type="button" data-push-edit="'+esc(x.id)+'">Bearbeiten</button> <button class="pillbtn" type="button" data-push-del="'+esc(x.id)+'">Löschen</button></div></section>'
     }).join(""):"<p>Keine geplanten Erinnerungen.</p>";
   });
 }
 function pushOpen(){
+  pushReset();
   $("push-items").innerHTML=shopping().map(function(i){return '<label style="display:block"><input type="checkbox" data-push-item="'+esc(i.name)+'"> '+esc(i.name)+(qtyOf(i)!==1?" ("+esc(String(qtyOf(i)))+")":"")+'</label>'}).join("")||"<p>Die Einkaufsliste ist leer.</p>";
   $("push-date").value=todayISO();$("push-date").min=todayISO();
   $("push-date-wrap").hidden=$("push-rep").value!=="once";
@@ -952,10 +962,12 @@ function pushSave(){
   var once=$("push-rep").value==="once";
   if(once&&!$("push-date").value){$("push-status").textContent="Bitte ein Datum wählen.";return}
   $("push-save").disabled=true;
-  sb.rpc("vorrat_push_save_reminder",{p_recipient:$("push-to").value,p_title:title,p_body:body,p_items:items,p_include_list:all,p_repeat:$("push-rep").value,p_date:once?$("push-date").value:null,p_time:$("push-time").value}).then(function(r){
+  var args={p_recipient:$("push-to").value,p_title:title,p_body:body,p_items:items,p_include_list:all,p_repeat:$("push-rep").value,p_date:once?$("push-date").value:null,p_time:$("push-time").value};
+  var editing=pushEditId;if(editing)args.p_id=editing;
+  sb.rpc(editing?"vorrat_push_update_reminder":"vorrat_push_save_reminder",args).then(function(r){
     $("push-save").disabled=false;
     if(r.error){$("push-status").textContent=/past/.test(r.error.message||"")?"Der Zeitpunkt liegt in der Vergangenheit.":"Speichern hat nicht geklappt.";return}
-    $("push-status").textContent="Erinnerung gespeichert.";$("push-body").value="";$("push-all").checked=false;
+    $("push-status").textContent=editing?"Änderungen gespeichert.":"Erinnerung gespeichert.";pushReset();$("push-body").value="";$("push-all").checked=false;
     [].forEach.call(document.querySelectorAll("[data-push-item]"),function(c){c.checked=false});pushLoad();
   },function(){$("push-save").disabled=false;$("push-status").textContent="Keine Verbindung."});
 }
@@ -965,10 +977,43 @@ $("push-scrim").addEventListener("click",function(e){if(e.target===$("push-scrim
 $("push-enable").addEventListener("click",pushEnable);
 $("push-save").addEventListener("click",pushSave);
 $("push-rep").addEventListener("change",function(){$("push-date-wrap").hidden=$("push-rep").value!=="once"});
+$("push-cancel").addEventListener("click",function(){pushReset();pushOpen()});
 $("push-list").addEventListener("click",function(e){
+  var eb=e.target.closest("[data-push-edit]");
+  if(eb){
+    var x=pushRows[eb.getAttribute("data-push-edit")];if(!x)return;
+    var names=x.item_names||[],have=shopping().map(function(i){return i.name});
+    $("push-items").innerHTML=have.concat(names.filter(function(n){return have.indexOf(n)<0})).map(function(n){return '<label style="display:block"><input type="checkbox" data-push-item="'+esc(n)+'"'+(names.indexOf(n)>-1?" checked":"")+'> '+esc(n)+'</label>'}).join("")||"<p>Die Einkaufsliste ist leer.</p>";
+    pushEditId=x.id;$("push-to").value=x.recipient_id;$("push-ttl").value=x.title;$("push-body").value=x.body||"";$("push-all").checked=!!x.include_list;
+    $("push-rep").value=x.repeat;$("push-date-wrap").hidden=x.repeat!=="once";
+    var p=new Intl.DateTimeFormat("sv-SE",{timeZone:"Europe/Vienna",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date(x.send_at)).split(" ");
+    $("push-date").value=p[0];$("push-time").value=p[1];
+    $("push-save").textContent="Änderungen speichern";$("push-cancel").hidden=false;$("push-h").textContent="Erinnerung bearbeiten";
+    $("push-status").textContent="";$("push-ttl").scrollIntoView({block:"center"});return;
+  }
   var b=e.target.closest("[data-push-del]");if(!b)return;
   sb.from("vorrat_push_reminders").delete().eq("id",b.getAttribute("data-push-del")).then(pushLoad);
 });
+
+/* ---------- Einkäufe pro Monat ---------- */
+function buyMonths(){
+  var m={};
+  items.forEach(function(i){
+    if(i.status==="list"||!i.purchase||!i.boughtAt)return;
+    var k=String(i.boughtAt).slice(0,7);if(!/^\d{4}-\d{2}$/.test(k))return;
+    var e=m[k]||(m[k]={trips:{},n:0,sum:0});e.trips[i.purchase]=1;e.n++;e.sum+=num(i.price)||0;
+  });
+  return Object.keys(m).sort().reverse().map(function(k){return {k:k,trips:Object.keys(m[k].trips).length,n:m[k].n,sum:m[k].sum}});
+}
+function buyOpen(){
+  var rows=buyMonths().slice(0,12),names=["Jänner","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
+  $("buy-body").innerHTML=rows.length?'<table class="buytable" style="width:100%;border-collapse:collapse"><thead><tr><th align="left">Monat</th><th align="right">Einkäufe</th><th align="right">Artikel</th><th align="right">Summe</th></tr></thead><tbody>'+rows.map(function(r){
+    return '<tr><td>'+esc(names[Number(r.k.slice(5))-1]+" "+r.k.slice(0,4))+'</td><td align="right">'+r.trips+'</td><td align="right">'+r.n+'</td><td align="right">'+(r.sum?esc(fmtEur(r.sum)):"–")+'</td></tr>'}).join("")+'</tbody></table><p class="note">Summe nur aus Artikeln mit Preis. Ältere Monate können ungenau sein.</p>':"<p>Noch keine Einkäufe erfasst.</p>";
+  $("buy-scrim").hidden=false;
+}
+$("buy-open").addEventListener("click",buyOpen);
+$("buy-close").addEventListener("click",function(){$("buy-scrim").hidden=true});
+$("buy-scrim").addEventListener("click",function(e){if(e.target===$("buy-scrim"))$("buy-close").click()});
 
 /* ---------- Rezepte ---------- */
 function recipeCategories(r){var values=Array.isArray(r.categories)?r.categories:[];return RECIPE_CATEGORIES.filter(function(c){return values.indexOf(c)>-1})}
@@ -1301,10 +1346,10 @@ function markBought(it){
   if(same){
     clearTimeout(qtyTimers[same.id]);delete pendingQty[same.id];
     store.patch(same.id,{qty:Math.round((qtyOf(same)+q)*100)/100,shop:str(it.shop)||same.shop||null});
-    store.patch(it.id,{status:"gone",removedAt:now});
+    store.patch(it.id,{status:"gone",removedAt:now,purchase:null});
   }else{
     store.add(newId(),{status:"in",removedAt:null,boughtAt:now,purchase:newId(),name:it.name,qty:q,unit:it.unit,loc:it.loc,cat:it.cat,mhd:it.mhd||null,price:it.price==null?null:it.price,shop:it.shop||null});
-    store.patch(it.id,{status:"gone",removedAt:now});
+    store.patch(it.id,{status:"gone",removedAt:now,purchase:null});
   }
   undoStack=null;showToast("„"+str(it.name)+"“ liegt jetzt im Lager",true);
 }
@@ -1316,7 +1361,9 @@ function removeItems(list,label){
   undoStack=list.map(function(it){return {id:it.id,qty:qtyOf(it),item:Object.assign({},it)}});
   restockStack=list.filter(function(it){return it.status==="in"}).map(function(it){return {id:it.id,qty:qtyOf(it),item:Object.assign({},it)}});
   list.forEach(function(it){clearTimeout(qtyTimers[it.id]);delete pendingQty[it.id]});
-  store.bulk(list.map(function(it){return it.id}),{status:"used",removedAt:now});
+  var fromList=list.filter(function(it){return it.status==="list"}),fromStock=list.filter(function(it){return it.status!=="list"});
+  if(fromStock.length)store.bulk(fromStock.map(function(it){return it.id}),{status:"used",removedAt:now});
+  if(fromList.length)store.bulk(fromList.map(function(it){return it.id}),{status:"used",removedAt:now,purchase:null});
   showToast(label,false,restockStack.length>0);
 }
 function undo(){
