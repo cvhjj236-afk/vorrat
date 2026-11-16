@@ -24,6 +24,22 @@ Daten und Login liegen in Supabase (Tabellen mit Präfix `vorrat_`, Row Level Se
 
 Der Schlüssel in `index.html` ist der öffentliche „publishable key" und darf im Code stehen. Geheime Schlüssel gehören nie ins Repository.
 
+## E-Mail-Prüfung für KI-Funktionen
+
+Die Edge Function `scan-receipt` prüft vor jedem KI-Aufruf serverseitig mit `auth.getUser()` die Sitzung. Erforderlich sind eine bestätigte E-Mail-Adresse, ein passender Eintrag in der bestehenden, nur serverseitig lesbaren Tabelle `ai_allowlist` und eine Haushaltsmitgliedschaft. Das gilt für Kassenbon, Einkaufsliste, MHD und Rezeptvorschläge. Bei Fehlern der Freigabeprüfung wird der Zugriff abgewiesen. E-Mail-Adressen aus Request-Body oder `user_metadata` werden nicht zur Freigabe verwendet.
+
+Die Freigabeliste wird ausschließlich durch den Backend-Administrator gepflegt. Neue Konten oder Haushalte erhalten dadurch keine automatische Berechtigung für kostenpflichtige KI-Aufrufe. Bestehende Haushaltsmitglieder benötigen ebenfalls einen Freigabeeintrag. Die normalen Vorratsfunktionen bleiben davon unabhängig.
+
+Wichtig für den Betrieb: E-Mail-Bestätigung muss im gehosteten Supabase-Projekt aktiviert sein. Bei eingeschalteter automatischer Bestätigung beweist `email_confirmed_at` allein keinen Postfachzugriff. Diese Repository-Änderung verändert die gehosteten Auth-Einstellungen nicht. Die aktualisierte Edge Function muss separat in Supabase deployt werden; ein Cloudflare-Frontend-Deployment reicht dafür nicht. Die Freigabeliste ersetzt keine zusätzlichen Verbrauchsquoten für freigegebene Konten.
+
+Gezielte lokale Regressionstests mit Node.js 24 oder neuer:
+
+```sh
+node tests/scanner-auth.cjs
+```
+
+Die Tests prüfen acht erlaubte beziehungsweise abgewiesene Zugriffswege mit simulierten Auth- und Datenbankantworten. Sie senden keine KI-Anfragen und verändern keine Live-Daten.
+
 ## Hosting
 
 GitHub Pages, Branch `main`, Wurzelverzeichnis.
