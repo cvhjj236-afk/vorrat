@@ -32,6 +32,25 @@ Deno.serve(async (req) => {
   const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
     global: { headers: { Authorization: auth } },
   });
+  // Verify identity with Auth, never trust client-supplied email or user_metadata.
+  const { data: userData, error: userError } = await sb.auth.getUser();
+  const user = userData?.user;
+  if (userError || !user) return json({ error: "not_authenticated" }, 401);
+  const email = user.email?.trim().toLowerCase();
+  if (!email || !user.email_confirmed_at) {
+    return json({ error: "email_not_confirmed" }, 403);
+  }
+  // Paid AI access uses the existing server-managed allowlist. Creating a
+  // household or confirming an email alone must not grant paid AI access.
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!serviceKey) return json({ error: "ai_access_unavailable" }, 503);
+  const admin = createClient(Deno.env.get("SUPABASE_URL")!, serviceKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data: allowed, error: allowError } = await admin
+    .from("ai_allowlist").select("email").eq("email", email).maybeSingle();
+  if (allowError) return json({ error: "ai_access_unavailable" }, 503);
+  if (!allowed) return json({ error: "ai_not_allowed" }, 403);
   const { data: member, error: mErr } = await sb.rpc("vorrat_is_member");
   if (mErr || member !== true) return json({ error: "not_member" }, 403);
   let body: { image?: string; mime?: string; mode?: string; ingredients?: Array<{ name?: string; qty?: number; unit?: string }> };
