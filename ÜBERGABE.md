@@ -145,3 +145,9 @@ Item-Status: "in" Lager, "list" Einkaufsliste, "used"/"gone" entnommen bzw. übe
 - Rückkehr über den Mail-Link: `detectSessionInUrl` ist aus, deshalb liest die App `#access_token…&type=recovery` selbst, setzt die Sitzung per `setSession`, löscht das Fragment und zeigt das Formular „Neues Passwort“ (min. 8 Zeichen, Wiederholung) → `updateUser({password})`. Währenddessen blockiert `recovering` den normalen Login-Ablauf. Abgelaufene/benutzte Links → Hinweis auf der Login-Seite (`authNotice`).
 - **Voraussetzung im Supabase-Dashboard (Auth → URL Configuration):** `https://vorrat.hoferbaut.fyi/` muss unter Redirect URLs stehen (und am besten als Site URL), sonst führt der Mail-Link auf die Site URL statt in die App.
 - Es gibt weiterhin keine Funktion „Passwort ändern“ im eingeloggten Zustand.
+
+### Nachtrag 2026-11-20 (spät): Eigener Mailversand über Resend
+- Supabase-Auth verschickt Mails jetzt über **Resend** (Account `cvhjj236`, Gratis-Tarif): SMTP `smtp.resend.com:465`, Benutzer `resend`, Passwort = Resend-API-Key `supabase-smtp` (Sending access; nur in Supabase gespeichert, nicht im Repo). Absender: `Vorrat <noreply@hoferbaut.fyi>`.
+- Domain `hoferbaut.fyi` in Resend per Auto-Configure (Cloudflare) eingerichtet und **verifiziert** (SPF/DKIM-Einträge bei Cloudflare, nicht löschen).
+- Vorlage „Reset password" (Supabase → Auth → Emails) ist auf Deutsch, mit anklickbarem Link und der Adresse zusätzlich als Text. Die anderen Vorlagen (Bestätigung etc.) sind noch Englisch.
+- Supabase hat Auth-Mail-Limit nach SMTP-Aktivierung auf 30/h gesetzt (anpassbar unter Auth → Rate Limits).
