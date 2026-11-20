@@ -1,9 +1,9 @@
 export const CATEGORIES = [
   'Obst', 'Gemüse', 'Fleisch & Wurst', 'Fisch & Meeresfrüchte',
   'Milchprodukte & Eier', 'Brot & Backwaren', 'Reis, Nudeln & Trockenwaren',
-  'Konserven, Gläser & Saucen', 'Tiefkühlprodukte', 'Getränke',
+  'Konserven, Gläser & Saucen', 'Tiefkühlprodukte', 'Getränke', 'Süßes & Snacks',
 ];
-export const EXTRACT_VERSION = 'lidl-1';
+export const EXTRACT_VERSION = 'lidl-2';
 
 const API = 'https://endpoints.leaflets.schwarz/v4/flyer?flyer_identifier=';
 export const flyerApiUrl = (slug: string) => API + encodeURIComponent(slug);
@@ -117,8 +117,8 @@ export const RESPONSE_SCHEMA = {
 export function promptForPage(run: any, page: any): string {
   return `Lies alle konkret bepreisten Lebensmittel-Aktionen auf der beigefügten LIDL-Flugblattseite ${page.number}.
 Das Flugblatt heißt ${run.edition}. Beschreibung: ${run.source_description || ''}.
-Erlaubte Kategorien: ${CATEGORIES.join(', ')}. Genau eine Kategorie pro Angebot. Tiefgekühltes immer Tiefkühlprodukte. Kaffee und Tee gehören zu Getränke, Speiseöl zu Konserven, Gläser & Saucen.
-Süßwaren, Non-Food, Haushaltswaren, Bekleidung, Elektronik und reine pauschale Rabattwerbung ohne konkreten Produktpreis überspringen. Angebote ohne lesbaren Preis überspringen.
+Erlaubte Kategorien: ${CATEGORIES.join(', ')}. Genau eine Kategorie pro Angebot. Tiefgekühltes immer Tiefkühlprodukte. Kaffee und Tee gehören zu Getränke, Speiseöl zu Konserven, Gläser & Saucen. Süßigkeiten, Schokolade, Kekse, Chips und Knabberzeug gehören zu Süßes & Snacks.
+Non-Food, Haushaltswaren, Bekleidung, Elektronik und reine pauschale Rabattwerbung ohne konkreten Produktpreis überspringen. Angebote ohne lesbaren Preis überspringen.
 name=Produktbezeichnung, brand=Marke, price=Aktionspreis in EUR als Zahl (kein alter Preis, kein Grundpreis, ohne separat ausgewiesenes Pfand).
 Steht bei einem Produkt ein Preis mit dem Hinweis 'Lidl Plus' (zusätzlich zum normalen Preis), ist price der Lidl-Plus-Preis und conditions beginnt mit 'Lidl Plus'. Den normalen Preis dann in conditions erwähnen.
 quantity=vollständige Packungsmenge mit Einheit, unit_price=abgedruckter Grundpreis, conditions=alle Preisbedingungen inkl. Mindestmenge, Gutschein, Sortenauswahl und Pfand.

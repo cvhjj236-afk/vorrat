@@ -1,9 +1,9 @@
 export const CATEGORIES = [
   'Obst', 'Gemüse', 'Fleisch & Wurst', 'Fisch & Meeresfrüchte',
   'Milchprodukte & Eier', 'Brot & Backwaren', 'Reis, Nudeln & Trockenwaren',
-  'Konserven, Gläser & Saucen', 'Tiefkühlprodukte', 'Getränke',
+  'Konserven, Gläser & Saucen', 'Tiefkühlprodukte', 'Getränke', 'Süßes & Snacks',
 ];
-export const EXTRACT_VERSION = 'hofer-3';
+export const EXTRACT_VERSION = 'hofer-4';
 
 export function bootstrapData(html: string): any {
   const marker = /\bvar data\s*=\s*/g.exec(html);
@@ -137,8 +137,8 @@ export function promptForPage(run: any, page: any): string {
   const year = 2000 + Number(String(run.edition).match(/_(\d{2})_0$/)?.[1]);
   return `Lies alle konkret bepreisten Lebensmittel-Aktionen auf der beigefügten HOFER-Flugblattseite ${page.number}.
 Das Flugblatt heißt ${run.edition}, das Ausgabejahr ist ${year}. Beschreibung des Herausgebers: ${run.source_description || ''}.
-Erlaubte Kategorien: ${CATEGORIES.join(', ')}. Genau eine Kategorie pro Angebot. Tiefgekühltes immer Tiefkühlprodukte. Kaffee und Tee gehören zu Getränke, Speiseöl zu Konserven, Gläser & Saucen.
-Süßwaren, Non-Food, Haushaltswaren und reine pauschale Rabattwerbung ohne konkreten Produktpreis überspringen.
+Erlaubte Kategorien: ${CATEGORIES.join(', ')}. Genau eine Kategorie pro Angebot. Tiefgekühltes immer Tiefkühlprodukte. Kaffee und Tee gehören zu Getränke, Speiseöl zu Konserven, Gläser & Saucen. Süßigkeiten, Schokolade, Kekse, Chips und Knabberzeug gehören zu Süßes & Snacks.
+Non-Food, Haushaltswaren und reine pauschale Rabattwerbung ohne konkreten Produktpreis überspringen.
 name=Produktbezeichnung, brand=Marke, price=Aktionspreis in EUR als Zahl (kein alter Preis, kein Grundpreis, ohne separat ausgewiesenes Pfand).
 quantity=vollständige Packungsmenge mit Einheit, unit_price=abgedruckter Grundpreis, conditions=alle Preisbedingungen inkl. Mindestmenge, Gutschein, Sortenauswahl und Pfand.
 valid_from und valid_to im Format YYYY-MM-DD aus den sichtbaren Datumsangaben und eindeutig geltenden Abschnittsüberschriften übernehmen. Das Ausgabejahr beachten. Ein Datum auf der Seite gilt für darunter zugeordnete Produkte. Preiszeiträume einzelner Produkte haben Vorrang. Bei bloßem 'ab' ohne belegtes Enddatum valid_to=null setzen. Keine Laufzeit erfinden.

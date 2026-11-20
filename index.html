@@ -326,7 +326,7 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
         <div class="menu-pop" id="menu-pop" hidden>
           <button id="hh-open" type="button">Haushalt</button>
           <button type="button" id="theme-btn">Design: Hell</button>
-          <button type="button" disabled style="font-size:13px;opacity:.6">Version 30</button>
+          <button type="button" disabled style="font-size:13px;opacity:.6">Version 31</button>
           <button id="buy-open" type="button" hidden>Einkäufe pro Monat</button>
           <button class="danger clear-all" id="clear-all" type="button" disabled>Lager leeren</button>
         </div></div>
@@ -388,7 +388,7 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 <div class="scrim" id="hofer-scrim" hidden>
   <div class="sheet hofer-sheet" role="dialog" aria-modal="true" aria-labelledby="hofer-title">
     <div class="sheet-head"><h2 id="hofer-title">Prospekt-Aktionen</h2><button class="x" id="hofer-close" type="button">Schließen</button></div>
-    <div class="f wide"><label for="hofer-src">Geschäft</label><select id="hofer-src"><option value="HOFER">HOFER</option><option value="Lidl">Lidl</option></select></div>
+    <div class="f wide"><label for="hofer-src">Geschäft</label><select id="hofer-src"><option value="HOFER">HOFER</option><option value="Lidl">Lidl</option><option value="Penny">Penny</option></select></div>
     <div class="f wide"><label for="hofer-query">Produkt suchen</label><input id="hofer-query" type="search" placeholder="z. B. Kartoffeln"></div>
     <div class="f wide"><label for="hofer-category">Kategorie</label><select id="hofer-category"><option value="">Alle Kategorien</option></select></div>
     <label class="chk"><input id="hofer-current" type="checkbox" checked> Nur jetzt gültige Aktionen</label>
@@ -904,12 +904,12 @@ function renderHofer(){
   $("hofer-test").hidden=!hoferOffers.some(function(o){return o.test_mode});
   $("hofer-status").textContent=hoferLoading?"Lade gespeicherte Angebote …":hoferError||(!hoferOffers.length?"Noch keine freigegebenen Angebote verfügbar.":rows.length+" passende Angebote");
   $("hofer-reload").disabled=hoferLoading;
-  $("hofer-results").innerHTML=rows.map(function(o){var n=hoferAdded[o.id];return '<div class="hofer-row"><div class="hi"><div class="hn">'+esc(o.name)+'</div><div class="hm">'+esc([o.brand,o.quantity].filter(Boolean).join(" · "))+(o.unit_price?' · '+esc(o.unit_price):'')+'</div><div class="hm">'+(o.valid_from>today?'ab '+esc(fmtDate(o.valid_from))+' ':'')+'bis '+esc(fmtDate(o.valid_to))+(o.conditions?' · '+esc(o.conditions):'')+' · <a href="'+esc(o.source_url+'/page/'+o.page)+'" target="_blank" rel="noopener noreferrer">S. '+esc(o.page)+'</a></div></div><div class="hp">'+esc(fmtEur(Number(o.price)))+'</div><button class="hadd'+(n?' on':'')+'" type="button" data-hofer-id="'+esc(o.id)+'" aria-label="'+esc(o.name)+' auf die Einkaufsliste">'+(n?n+'×':'+')+'</button></div>'}).join("");
+  $("hofer-results").innerHTML=rows.map(function(o){var n=hoferAdded[o.id];return '<div class="hofer-row"><div class="hi"><div class="hn">'+esc(o.name)+'</div><div class="hm">'+esc([o.brand,o.quantity].filter(Boolean).join(" · "))+(o.unit_price?' · '+esc(o.unit_price):'')+'</div><div class="hm">'+(o.valid_from>today?'ab '+esc(fmtDate(o.valid_from))+' ':'')+'bis '+esc(fmtDate(o.valid_to))+(o.conditions?' · '+esc(o.conditions):'')+' · <a href="'+esc(o.page?o.source_url+'/page/'+o.page:o.source_url)+'" target="_blank" rel="noopener noreferrer">'+(o.page?'S. '+esc(o.page):'Produkt')+'</a></div></div><div class="hp">'+esc(fmtEur(Number(o.price)))+'</div><button class="hadd'+(n?' on':'')+'" type="button" data-hofer-id="'+esc(o.id)+'" aria-label="'+esc(o.name)+' auf die Einkaufsliste">'+(n?n+'×':'+')+'</button></div>'}).join("");
 }
 function loadHofer(){
   if(!sb||hoferLoading)return;
   var epoch=hoferEpoch;hoferLoading=true;hoferError="";renderHofer();
-  sb.rpc(hoferSrc==="Lidl"?"vorrat_lidl_catalog":"vorrat_hofer_catalog").then(function(r){
+  sb.rpc(hoferSrc==="Lidl"?"vorrat_lidl_catalog":hoferSrc==="Penny"?"vorrat_penny_catalog":"vorrat_hofer_catalog").then(function(r){
     if(epoch!==hoferEpoch)return;hoferLoading=false;
     if(r.error){hoferError="Die Angebote konnten nicht geladen werden. Bitte versuch es erneut.";renderHofer();return}
     hoferOffers=Array.isArray(r.data)?r.data:[];
