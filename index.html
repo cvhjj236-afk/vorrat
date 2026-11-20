@@ -327,7 +327,7 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
         <div class="menu-pop" id="menu-pop" hidden>
           <button id="hh-open" type="button">Haushalt</button>
           <button type="button" id="theme-btn">Design: Hell</button>
-          <button type="button" disabled style="font-size:13px;opacity:.6">Version 32</button>
+          <button type="button" disabled style="font-size:13px;opacity:.6">Version 33</button>
           <button id="buy-open" type="button" hidden>Einkäufe pro Monat</button>
           <button class="danger clear-all" id="clear-all" type="button" disabled>Lager leeren</button>
         </div></div>
@@ -510,6 +510,15 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
         <div class="f"><label for="a-pass">Passwort</label><input id="a-pass" type="password" autocomplete="current-password"></div>
         <p class="err" id="a-err" role="alert"></p>
         <button class="primary" id="a-submit" type="submit">Anmelden</button>
+        <button class="linkbtn" id="a-forgot" type="button">Passwort vergessen?</button>
+      </form>
+    </div>
+    <div id="auth-reset" hidden>
+      <form id="reset-form" novalidate>
+        <div class="f"><label for="r-pass">Neues Passwort</label><input id="r-pass" type="password" autocomplete="new-password"></div>
+        <div class="f"><label for="r-pass2">Passwort wiederholen</label><input id="r-pass2" type="password" autocomplete="new-password"></div>
+        <p class="err" id="r-err" role="alert"></p>
+        <button class="primary" id="r-submit" type="submit">Passwort speichern</button>
       </form>
     </div>
     <div id="auth-join" hidden>
@@ -707,7 +716,8 @@ var authMode="in";
 function setErr(id,t){$(id).textContent=t||""}
 function showAuth(mode,msg){
   $("auth").hidden=false;
-  $("auth-login").hidden=mode!=="login";$("auth-join").hidden=mode!=="join";
+  $("auth-login").hidden=mode!=="login";$("auth-join").hidden=mode!=="join";$("auth-reset").hidden=mode!=="reset";
+  if(mode==="reset"){$("auth-lead").textContent="Wähle ein neues Passwort (mindestens 8 Zeichen).";setErr("r-err",msg);$("r-pass").focus();return}
   $("auth-lead").textContent=mode==="join"?"Angemeldet als "+userEmail+". Gib den Einladungscode aus deinem Haushalt ein.":(mode==="login"?"Melde dich an, um den gemeinsamen Vorrat zu sehen.":"Lade …");
   setErr("a-err",mode==="login"?msg:"");setErr("j-err",mode==="join"?msg:"");
   if(mode==="login")$("a-email").focus();if(mode==="join")$("j-code").focus();
@@ -739,12 +749,15 @@ function checkMember(){
     else{stopData();cacheClear();showAuth("join")}
   },function(){checkedFor=null;if(loaded)hideAuth();else showAuth("login","Keine Verbindung. Bitte versuch es noch einmal.")});
 }
+var recovering=false;
 function onSignedIn(s){
+  if(recovering)return;
   userEmail=(s.user&&s.user.email)||"";
   if(checkedFor===s.user.id)return;
   checkedFor=s.user.id;checkMember();
 }
-function signedOut(){stopData();cacheClear();checkedFor=null;userEmail="";showAuth("login")}
+var authNotice="";
+function signedOut(){stopData();cacheClear();checkedFor=null;userEmail="";var m=authNotice;authNotice="";showAuth("login",m||undefined)}
 
 function initAuth(){
   $("tab-in").addEventListener("click",function(){setMode("in")});
@@ -761,6 +774,29 @@ function initAuth(){
       if(r.error){setErr("a-err",authError(r.error));return}
       if(authMode==="up"&&!(r.data&&r.data.session)){setErr("a-err","Fast geschafft: Bitte bestätige die E-Mail, die wir dir geschickt haben, und melde dich danach an.")}
     },function(){$("a-submit").disabled=false;setErr("a-err","Keine Verbindung. Bitte versuch es noch einmal.")});
+  });
+  $("a-forgot").addEventListener("click",function(){
+    var email=$("a-email").value.trim();
+    if(!email){setErr("a-err","Bitte gib oben deine E-Mail ein, dann schicken wir dir einen Link.");return}
+    setErr("a-err","");$("a-forgot").disabled=true;
+    sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+"/"}).then(function(r){
+      $("a-forgot").disabled=false;
+      if(r.error){setErr("a-err",authError(r.error));return}
+      setErr("a-err","Wenn es zu dieser E-Mail ein Konto gibt, haben wir dir einen Link zum Zurücksetzen geschickt. Bitte schau auch im Spam-Ordner nach.");
+    },function(){$("a-forgot").disabled=false;setErr("a-err","Keine Verbindung. Bitte versuch es noch einmal.")});
+  });
+  $("reset-form").addEventListener("submit",function(e){
+    e.preventDefault();
+    var a=$("r-pass").value,b=$("r-pass2").value;
+    if(a.length<8){setErr("r-err","Das Passwort braucht mindestens 8 Zeichen.");return}
+    if(a!==b){setErr("r-err","Die beiden Passwörter sind nicht gleich.");return}
+    setErr("r-err","");$("r-submit").disabled=true;
+    sb.auth.updateUser({password:a}).then(function(r){
+      $("r-submit").disabled=false;
+      if(r.error){setErr("r-err",authError(r.error));return}
+      $("r-pass").value="";$("r-pass2").value="";recovering=false;checkedFor=null;
+      sb.auth.getSession().then(function(x){if(x.data&&x.data.session)onSignedIn(x.data.session);else showAuth("login","Passwort geändert. Bitte melde dich an.")});
+    },function(){$("r-submit").disabled=false;setErr("r-err","Keine Verbindung. Bitte versuch es noch einmal.")});
   });
   $("join-form").addEventListener("submit",function(e){
     e.preventDefault();
@@ -784,6 +820,7 @@ function initAuth(){
   $("j-logout").addEventListener("click",function(){sb.auth.signOut()});
   sb.auth.onAuthStateChange(function(evt,s){
     setTimeout(function(){
+      if(recovering)return;
       if(evt==="SIGNED_OUT"||(evt==="INITIAL_SESSION"&&!s)){signedOut();return}
       if(!s||evt==="TOKEN_REFRESHED")return;
       onSignedIn(s);
@@ -1783,6 +1820,19 @@ if(!window.supabase||typeof window.supabase.createClient!=="function"){
   sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false,storageKey:"vorrat-auth"}});
   if(cacheLoad()){hideAuth();render();note("Zuletzt geladener Stand. Aktualisiere …")}
   initAuth();
+  /* Rückkehr vom Link „Passwort zurücksetzen“: Token steht im URL-Fragment */
+  function expiredLink(){authNotice="Der Link ist abgelaufen oder wurde schon benutzt. Bitte fordere mit „Passwort vergessen?“ einen neuen an.";showAuth("login",authNotice)}
+  (function(){
+    var h=location.hash||"";if(h.length<2)return;
+    var q={};h.slice(1).split("&").forEach(function(kv){var i=kv.indexOf("=");if(i>0)q[decodeURIComponent(kv.slice(0,i))]=decodeURIComponent(kv.slice(i+1).replace(/\+/g," "))});
+    if(q.type!=="recovery"&&!q.error_code)return;
+    try{history.replaceState(null,"",location.pathname+location.search)}catch(e){}
+    if(q.error_code||!q.access_token||!q.refresh_token){expiredLink();return}
+    recovering=true;showAuth("reset");
+    sb.auth.setSession({access_token:q.access_token,refresh_token:q.refresh_token}).then(function(r){
+      if(r.error){recovering=false;expiredLink()}
+    },function(){recovering=false;showAuth("login","Keine Verbindung. Bitte versuch es noch einmal.")});
+  })();
 }
 })();
 </script>

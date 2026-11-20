@@ -139,3 +139,9 @@ Item-Status: "in" Lager, "list" Einkaufsliste, "used"/"gone" entnommen bzw. übe
 - Erfolg: Ergebnis in `result`, **Foto sofort gelöscht** (`image = null`). In der App erscheint oben ein „✓ n fertig“-Button; Übernehmen/leeres Ergebnis löscht den Auftrag (`vorrat_scan_ack`).
 - Ausfallszenarien: hängender Versuch → Lease (3 Min.) läuft ab, Auftrag wird neu eingeplant; Speichern des Ergebnisses 3× wiederholt; nach 24 Versuchen oder 3 h Gesamtalter → `failed`, Foto gelöscht, App meldet „bitte neues Foto“; fertige Ergebnisse 7 Tage, fehlgeschlagene 3 Tage, danach Zeile gelöscht; max. 5 offene Aufträge pro Haushalt; Foto max. 3 MB, nur Base64; Foto ist für Clients nie lesbar (Spaltenrechte), nur Haushaltsmitglieder auf der KI-Allowlist können einreihen.
 - Prompt/Kategorien im Worker müssen mit `scan-receipt` übereinstimmen (bewusst dupliziert).
+
+### Nachtrag 2026-11-20: „Passwort vergessen?“ (v33)
+- Login-Seite hat jetzt „Passwort vergessen?“ → `sb.auth.resetPasswordForEmail(email, {redirectTo: <Origin>/})`. Die Antwort ist bewusst neutral (verrät nicht, ob es das Konto gibt).
+- Rückkehr über den Mail-Link: `detectSessionInUrl` ist aus, deshalb liest die App `#access_token…&type=recovery` selbst, setzt die Sitzung per `setSession`, löscht das Fragment und zeigt das Formular „Neues Passwort“ (min. 8 Zeichen, Wiederholung) → `updateUser({password})`. Währenddessen blockiert `recovering` den normalen Login-Ablauf. Abgelaufene/benutzte Links → Hinweis auf der Login-Seite (`authNotice`).
+- **Voraussetzung im Supabase-Dashboard (Auth → URL Configuration):** `https://vorrat.hoferbaut.fyi/` muss unter Redirect URLs stehen (und am besten als Site URL), sonst führt der Mail-Link auf die Site URL statt in die App.
+- Es gibt weiterhin keine Funktion „Passwort ändern“ im eingeloggten Zustand.
