@@ -107,3 +107,10 @@ Item-Status: "in" Lager, "list" Einkaufsliste, "used"/"gone" entnommen bzw. übe
 
 ## v30 – Geschäft beim Einsortieren (2026-11-13)
 - Beim Einsortieren in eine Lagerzeile wird `shop` der alten Zeile nicht mehr überschrieben (sonst wanderte der alte Einkauf zum neuen Geschäft). Live getestet (Testartikel „ZZTest Merge", danach aus DB gelöscht).
+
+## Aufräumen Prospekt-Daten (2026-11-20, Claude)
+- Migration `20261120210000_flyers_cleanup.sql` (in Supabase ausgeführt): Funktion `vorrat_flyers_cleanup()` (security definer, nur Cron/service_role) + Cron `vorrat-flyers-cleanup` jeden Donnerstag 05:30 UTC (= 6:30/7:30 Wien, nach dem Import-Fenster).
+- Regeln: Angebote mit `valid_to` älter als 7 Tage löschen; Testlauf-Angebote (`test_mode`) älter als 7 Tage löschen; Seiten-Rohdaten (`vorrat_*_pages`) von Läufen älter als 30 Tage löschen. Läufe (`vorrat_*_runs`) bleiben, weil Fingerprint/Edition die Deduplizierung tragen.
+- Einkaufslisten-/Lagerzeilen (`vorrat_items`) sind unabhängig von Angeboten (eigene ID, Preis kopiert) und werden nicht berührt.
+- Einmal manuell gelaufen: HOFER 313→293, Lidl 395→380 Angebote, `vorrat_items` unverändert (85).
+- Offen: HOFER-Angebote mit `valid_to` 31.12. ("dauerhaft günstig"/ab-Preise ohne Ende) bleiben bis dahin sichtbar, auch wenn eine neuere Ausgabe da ist. Falls das stören sollte, Angebote älterer Ausgaben bei neuem `ready`-Lauf zusätzlich löschen.
