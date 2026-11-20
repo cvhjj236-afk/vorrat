@@ -322,11 +322,12 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
       </div>
       <div class="btns">
       <button class="pillbtn" id="scan" type="button">Foto</button>
+      <button class="pillbtn" id="scan-jobs" type="button" hidden aria-label="Foto-Aufträge"></button>
         <div class="menu-wrap"><button class="pillbtn" id="menu-btn" type="button" aria-label="Mehr" aria-haspopup="true" aria-expanded="false">⋯</button>
         <div class="menu-pop" id="menu-pop" hidden>
           <button id="hh-open" type="button">Haushalt</button>
           <button type="button" id="theme-btn">Design: Hell</button>
-          <button type="button" disabled style="font-size:13px;opacity:.6">Version 31</button>
+          <button type="button" disabled style="font-size:13px;opacity:.6">Version 32</button>
           <button id="buy-open" type="button" hidden>Einkäufe pro Monat</button>
           <button class="danger clear-all" id="clear-all" type="button" disabled>Lager leeren</button>
         </div></div>
@@ -1611,7 +1612,35 @@ $("form").addEventListener("submit",function(e){
 var scanData=null,scanTo="in",DEFLOC={"Tiefkühlkost":"Tiefkühler","Milchprodukte & Eier":"Kühlschrank","Fleisch & Fisch":"Kühlschrank","Obst & Gemüse":"Kühlschrank","Drogerie":"Bad","Haushalt":"Vorratsschrank"};
 function scanMsg(t,body){$("sc-msg").textContent=t;$("sc-body").hidden=!body}
 function openScan(){$("scrim3").hidden=false;scanMsg("Foto wird ausgewertet …",false)}
-function closeScan(){$("scrim3").hidden=true;scanData=null;$("scan-file").value=""}
+var scanJobId=null,scanJobs=[],scanJobsBusy=false;
+function closeScan(){$("scrim3").hidden=true;scanData=null;scanJobId=null;$("scan-file").value=""}
+/* Foto-Warteschlange: schlägt die Auswertung fehl, speichert das Backend das Foto und versucht es alle 5 Min. erneut */
+function queueScan(b64,mode){
+  sb.rpc("vorrat_scan_enqueue",{p_image:b64,p_mode:mode}).then(function(r){
+    if(r.error){var m=String(r.error.message||"");scanMsg(m.indexOf("queue_full")>-1?"Es warten schon 5 Fotos auf die Auswertung. Bitte warte, bis davon welche fertig sind.":"Die Auswertung hat gerade nicht geklappt und das Foto konnte nicht zwischengespeichert werden. Versuch es später nochmal.",false);return}
+    scanMsg("Die KI ist gerade nicht erreichbar. Dein Foto ist sicher gespeichert und wird automatisch alle 5 Minuten erneut ausgewertet. Das Ergebnis findest du dann oben unter dem Uhr-Symbol.",false);
+    loadScanJobs();
+  },function(){scanMsg("Keine Verbindung. Bitte versuch es noch einmal.",false)});
+}
+function loadScanJobs(){
+  if(scanJobsBusy||!sb)return;scanJobsBusy=true;
+  sb.from("vorrat_scan_jobs").select("id,mode,status,attempts,last_error,result,created_at").order("created_at").then(function(r){
+    scanJobsBusy=false;if(r.error||!Array.isArray(r.data))return;
+    scanJobs=r.data;var b=$("scan-jobs"),done=scanJobs.filter(function(j){return j.status==="done"}).length;
+    b.hidden=!scanJobs.length;b.textContent=done?"✓ "+done+" fertig":"⏳ "+scanJobs.length;
+  },function(){scanJobsBusy=false});
+}
+$("scan-jobs").addEventListener("click",function(){
+  var done=scanJobs.filter(function(j){return j.status==="done"}),failed=scanJobs.filter(function(j){return j.status==="failed"}),wait=scanJobs.filter(function(j){return j.status==="queued"||j.status==="running"});
+  $("scrim3").hidden=false;
+  if(done.length){var j=done[0];scanJobId=j.id;showScan(j.result||{items:[]});if(scanData&&scanData.items.length)scanTarget(j.mode==="list"?"list":"in");else{sb.rpc("vorrat_scan_ack",{p_id:j.id}).then(loadScanJobs);scanJobId=null}return}
+  var t=[];if(wait.length)t.push(wait.length+" Foto"+(wait.length===1?"":"s")+" warte"+(wait.length===1?"t":"n")+" auf die Auswertung (neuer Versuch alle 5 Minuten, bis zu 2 Stunden).");
+  if(failed.length){t.push(failed.length+" Foto"+(failed.length===1?"":"s")+" konnte"+(failed.length===1?"":"n")+" leider nicht ausgewertet werden. Bitte mach ein neues Foto.");failed.forEach(function(j){sb.rpc("vorrat_scan_ack",{p_id:j.id})});setTimeout(loadScanJobs,500)}
+  scanMsg(t.join(" ")||"Keine offenen Fotos.",false);
+});
+setInterval(function(){if(!document.hidden&&typeof userEmail!=="undefined"&&userEmail)loadScanJobs()},60000);
+setTimeout(loadScanJobs,4000);
+document.addEventListener("visibilitychange",function(){if(!document.hidden)loadScanJobs()});
 function shrink(file){return new Promise(function(res,rej){
   var u=URL.createObjectURL(file),im=new Image();
   im.onload=function(){var m=1600,k=Math.min(1,m/Math.max(im.width,im.height)),c=document.createElement("canvas");
@@ -1631,13 +1660,17 @@ $("scan").addEventListener("click",function(){$("scan-file").click()});
 $("scan-file").addEventListener("change",function(e){
   var f=e.target.files&&e.target.files[0];if(!f)return;
   openScan();
+  var keep=null,scanMode=view==="list"?"list":"receipt";
   shrink(f).then(function(b64){
-    return sb.functions.invoke("scan-receipt",{body:{image:b64,mime:"image/jpeg",mode:view==="list"?"list":"receipt"}})
+    keep=b64;
+    return sb.functions.invoke("scan-receipt",{body:{image:b64,mime:"image/jpeg",mode:scanMode}})
   }).then(function(r){
     if(r.error&&r.error.context&&typeof r.error.context.json==="function"){return r.error.context.json().then(function(j){return {data:j,error:r.error}},function(){return r})}
     return r;
   }).then(function(r){
-    if(r.error||!r.data||r.data.error){var c=r.data&&r.data.error,dt=r.data&&(r.data.status||r.data.detail)?" ["+(r.data.status||"")+" "+String(r.data.detail||"").slice(0,160)+"]":"";scanMsg(c==="no_key"?"Die Foto-Funktion ist noch nicht eingerichtet (API-Key fehlt).":c==="not_member"?"Dafür fehlt die Berechtigung.":"Das Foto konnte gerade nicht ausgewertet werden. Versuch es später nochmal."+(c?" ("+c+")":"")+dt,false);return}
+    if(r.error||!r.data||r.data.error){var c=r.data&&r.data.error;
+      if(keep&&c!=="no_key"&&c!=="not_member"&&c!=="ai_not_allowed"&&c!=="not_authenticated"&&c!=="email_not_confirmed"&&c!=="image"){queueScan(keep,scanMode);return}
+      var dt=r.data&&(r.data.status||r.data.detail)?" ["+(r.data.status||"")+" "+String(r.data.detail||"").slice(0,160)+"]":"";scanMsg(c==="no_key"?"Die Foto-Funktion ist noch nicht eingerichtet (API-Key fehlt).":c==="not_member"?"Dafür fehlt die Berechtigung.":"Das Foto konnte gerade nicht ausgewertet werden. Versuch es später nochmal."+(c?" ("+c+")":"")+dt,false);return}
     showScan(r.data);
   },function(){scanMsg("Das Foto konnte nicht gelesen werden.",false)});
 });
@@ -1673,6 +1706,7 @@ $("sc-ok").addEventListener("click",function(){
     else store.add(newId(),Object.assign({status:scanTo,removedAt:null,boughtAt:new Date().toISOString(),purchase:pid},data));
     store.product(productKey(name),{name:data.name,unit:data.unit,loc:data.loc,cat:data.cat,shop:data.shop});n++;
   }
+  if(scanJobId)sb.rpc("vorrat_scan_ack",{p_id:scanJobId}).then(loadScanJobs);
   closeScan();view=scanTo==="list"?"list":"stock";savePref();render();
   showToast(n+" Artikel "+(scanTo==="list"?"auf die Liste gesetzt":"ins Lager gelegt"),true);
 });

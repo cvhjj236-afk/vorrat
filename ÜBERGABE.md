@@ -129,3 +129,13 @@ Item-Status: "in" Lager, "list" Einkaufsliste, "used"/"gone" entnommen bzw. übe
 - Die feste Tabelle (`mapCategory` in `vorrat-penny-import/core.ts`) bleibt erste Instanz. Produkte, die sie nicht kennt (neue Penny-Kategorien), klassifiziert Gemini (`gemini-3.5-flash-lite`, nur Text, 60er-Chunks, Enum = 11 Kategorien + `Non-Food`) in `aiCategories()` (index.ts). `Non-Food` → übersprungen.
 - Fehler/fehlender `GOOGLE_API_KEY` brechen den Import nicht ab: Produkte landen dann wie bisher im Review.
 - Kontrolle: `vorrat_penny_runs.weeks` enthält `ai_candidates` / `ai_classified`. Verifiziert mit erzwungenem Test (Eier → Milchprodukte & Eier), danach Hack entfernt.
+
+### Nachtrag 2026-11-20 (abends): Ausfallsicherheit Gemini (v32)
+**Penny:** Ist Gemini bei der Kategorisierung unbekannter Produkte nicht erreichbar, wird der Lauf nach 2 Min. wiederholt (max. 3 Versuche, `vorrat_penny_finish` retry). Erst im 3. Versuch gehen Reste ins Review; der Import bricht nie ganz ab. Zusätzlich läuft der Wochenplan (Do-Nacht) erneut.
+
+**Foto-Warteschlange** (Migration `20261120230000_scan_queue.sql`, Edge Function `vorrat-scan-worker`, App v32):
+- Schlägt die Foto-Auswertung (Kassabon/Einkaufszettel, `scan-receipt`) fehl (Gemini überlastet, Timeout, unlesbare Antwort), speichert die App das verkleinerte Foto per RPC `vorrat_scan_enqueue` in `vorrat_scan_jobs`. Nicht betroffen: Berechtigungsfehler (kein Key/kein Mitglied/nicht auf Allowlist) und MHD-Scan/Rezepte (interaktiv).
+- Cron `vorrat-scan-worker` (jede Minute, `vorrat_scan_tick`) stößt fällige Aufträge an (pg_net + Einmal-Token, wie Penny). Versuch alle 5 Min., max. 24 (= 2 h).
+- Erfolg: Ergebnis in `result`, **Foto sofort gelöscht** (`image = null`). In der App erscheint oben ein „✓ n fertig“-Button; Übernehmen/leeres Ergebnis löscht den Auftrag (`vorrat_scan_ack`).
+- Ausfallszenarien: hängender Versuch → Lease (3 Min.) läuft ab, Auftrag wird neu eingeplant; Speichern des Ergebnisses 3× wiederholt; nach 24 Versuchen oder 3 h Gesamtalter → `failed`, Foto gelöscht, App meldet „bitte neues Foto“; fertige Ergebnisse 7 Tage, fehlgeschlagene 3 Tage, danach Zeile gelöscht; max. 5 offene Aufträge pro Haushalt; Foto max. 3 MB, nur Base64; Foto ist für Clients nie lesbar (Spaltenrechte), nur Haushaltsmitglieder auf der KI-Allowlist können einreihen.
+- Prompt/Kategorien im Worker müssen mit `scan-receipt` übereinstimmen (bewusst dupliziert).

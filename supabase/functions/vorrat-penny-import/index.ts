@@ -106,7 +106,7 @@ async function aiCategories(products: any[]): Promise<Map<string, string>> {
   return result;
 }
 
-async function run() {
+async function run(attempts: number) {
   const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Vienna' });
   const overview = await fetchHtml('/kategorie/alle-angebote-99000000');
   const slugs = [...new Set([...weekSlugs(today), ...(overview ? dealSlugs(overview) : [])])];
@@ -123,6 +123,8 @@ async function run() {
   let skipped = 0, expired = 0;
   const unknown = [...seen.values()].filter(p => 'unknown' in mapCategory(p));
   const ai = await aiCategories(unknown);
+  // Gemini nicht erreichbar: Lauf in 2 Min. wiederholen (max. 3 Versuche); erst im letzten Versuch landen Reste im Review.
+  if (Deno.env.get('GOOGLE_API_KEY') && unknown.some(p => !ai.has(String(p.sku))) && attempts < 3) throw new ImportError('Gemini-Kategorisierung nicht erreichbar, neuer Versuch folgt.', true);
   for (const p of seen.values()) {
     const r = await toOffer(p, today, ai.get(String(p.sku)));
     if (r.skipped) skipped++;
@@ -137,7 +139,7 @@ async function run() {
 
 async function process(runRow: any) {
   try {
-    const result = await run();
+    const result = await run(Number(runRow.attempts) || 3);
     const committed = await rpc('vorrat_penny_finish', { p_run_id: runRow.id, p_lease: runRow.lease_id, p_data: result });
     if (!committed) console.log('PENNY-Schritt verworfen: Lease wurde bereits erneuert.');
   } catch (error) {
