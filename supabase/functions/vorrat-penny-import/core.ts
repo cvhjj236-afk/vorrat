@@ -127,8 +127,9 @@ export function unitPriceOf(p: any): string | null {
 
 const isoDate = (v: unknown) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null;
 
-export async function toOffer(p: any, today: string): Promise<{ offer?: any; review?: any; skipped?: string; expired?: boolean }> {
-  const mapped = mapCategory(p);
+// override: von Gemini bestimmte Kategorie für Produkte, die die feste Tabelle nicht kennt ('Non-Food' = überspringen).
+export async function toOffer(p: any, today: string, override?: string): Promise<{ offer?: any; review?: any; skipped?: string; expired?: boolean }> {
+  const mapped: Mapped = override === 'Non-Food' ? { skip: 'KI: Non-Food' } : override && CATEGORIES.includes(override) ? { category: override } : mapCategory(p);
   if ('skip' in mapped) return { skipped: mapped.skip };
   const name = cleanName(p?.name);
   const from = isoDate(p?.price?.validityStart);
