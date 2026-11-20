@@ -91,6 +91,8 @@ export function mapCategory(p: any): Mapped {
   const [top, sub = ''] = path;
   if (NON_FOOD_TOP.has(top) || NON_FOOD_SUB.has(sub)) return { skip: path.join(' > ') };
   if (top === 'Tiefkühl') return { category: 'Tiefkühlprodukte' };
+  // Kühlwaren > Schnelle Küche: Aufback-Brot/Baguette zu Brot, Fertiges zu Konserven/Fertiggerichte.
+  if (sub === 'Schnelle Küche') return { category: /baguette|brot|semmel|brötchen|weckerl|gebäck|toast|croissant|ciabatta/i.test(String(p?.name)) ? 'Brot & Backwaren' : 'Konserven, Gläser & Saucen' };
   if (SUB[sub]) return { category: SUB[sub] };
   if (top === 'Obst & Gemüse') return { category: /obst|früchte/i.test(sub) ? 'Obst' : 'Gemüse' };
   if (TOP[top]) return { category: TOP[top] };
